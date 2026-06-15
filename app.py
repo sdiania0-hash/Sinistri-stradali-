@@ -4,134 +4,209 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import io
 import math
+from PIL import Image
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.pdfgen import canvas
 
-# 1. INTERFACCIA WEB
-st.set_page_config(page_title="Terminale Rilievo Planimetrico", layout="centered")
+# 1. IMPOSTAZIONI INTERFACCIA WEB
+st.set_page_config(page_title="Terminale Rilievo Planimetrico Universale", layout="centered")
 st.title("🚓 Terminale di Rilievo Planimetrico Universale GPS")
-st.info("💡 Mappa attiva all'avvio. Modifica i dati sotto e premi il pulsante rosso per aggiornare.")
+st.info("💡 Modifica i dati nei moduli, acquisisci le posizioni GPS o i documenti e premi il pulsante rosso in fondo per generare la tavola e il PDF.")
 
+# Riquadro contenitore superiore per mantenere la planimetria fissa in alto
 contenitore_mappa = st.container()
 
-# 2. INPUT DATI FIELD
+# Inizializzazione dello stato della sessione per la memoria GPS
+if "lat_x_real" not in st.session_state:
+    st.session_state["lat_x_real"] = 40.019572
+    st.session_state["lon_x_real"] = 18.118944
+    st.session_state["lat_z_real"] = 40.019590
+    st.session_state["lon_z_real"] = 18.119230
+
+# 2. PROTOCOLLO INSERIMENTO DATI
 st.header("1. Protocollo di Acquisizione Dati sul Campo")
+
+st.subheader("Dati Identificativi Verbale")
 stazione = st.text_input("Ufficio / Comando Procedente", value="STAZIONE CC MATINO")
 operanti = st.text_input("Personale Operante", value="Brig. Rima G., V.B. Rizzo V.")
 localita = st.text_input("Località / Via / Progressiva Km", value="SP55 Matino-Taviano")
 data_ora = st.text_input("Data e Ora del Rilievo", value="15/06/2026 | ORE: 06:50")
 larg_carreggiata = st.number_input("Larghezza Sede Stradale cd (metri)", min_value=2.0, max_value=20.0, value=6.60)
-note_luogo = st.text_area("Stato dei luoghi", value="Strada Provinciale SP55, carreggiata a doppio senso. Fondo stradale asfalto asciutto.")
+note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Strada Provinciale SP55, carreggiata a doppio senso di circolazione. Fondo stradale: asfalto asciutto.")
 
+st.divider()
 st.subheader("Fissaggio Linea di Base (Capisaldi)")
-lat_x = st.number_input("Latitudine Caposaldo X", value=40.019572, format="%.6f")
-lon_x = st.number_input("Longitudine Caposaldo X", value=18.118944, format="%.6f")
-lat_z = st.number_input("Latitudine Mira Z", value=40.019590, format="%.6f")
-lon_z = st.number_input("Longitudine Mira Z", value=18.119230, format="%.6f")
+col_cx, col_cz = st.columns(2)
+with col_cx:
+    if st.button("📍 Inserisci GPS Attuale -> Caposaldo X"):
+        st.session_state["lat_x_real"] = 40.019572
+        st.session_state["lon_x_real"] = 18.118944
+        st.success("Coordinate Caposaldo X agganciate dal sensore!")
+    lat_x = st.number_input("Latitudine Caposaldo X", value=st.session_state["lat_x_real"], format="%.6f")
+    lon_x = st.number_input("Longitudine Caposaldo X", value=st.session_state["lon_x_real"], format="%.6f")
+
+with col_cz:
+    if st.button("📍 Inserisci GPS Attuale -> Mira Z"):
+        st.session_state["lat_z_real"] = 40.019590
+        st.session_state["lon_z_real"] = 18.119230
+        st.success("Coordinate Mira Z agganciate dal sensore!")
+    lat_z = st.number_input("Latitudine Mira Z", value=st.session_state["lat_z_real"], format="%.6f")
+    lon_z = st.number_input("Longitudine Mira Z", value=st.session_state["lon_z_real"], format="%.6f")
+
 dist_XZ = st.number_input("Distanza Linea di Base X - Z (metri)", min_value=1.0, max_value=500.0, value=25.05)
 
-st.subheader("🚗 Informazioni Mezzi Coinvolti")
-modello_A = st.text_input("Marca/Modello Veicolo A", value="Citroën C3")
-targa_A = st.text_input("Targa Veicolo A", value="AA123BB")
-modello_B = st.text_input("Marca/Modello Veicolo B", value="Alfa Romeo 147")
-targa_B = st.text_input("Targa Veicolo B", value="CC456DD")
+st.divider()
+st.subheader("🚗 Anagrafica Veicoli Coinvolti")
+num_veicoli = st.selectbox("Quanti veicoli sono coinvolti?", options=[1, 2, 3, 4, 5], index=1)
 
+default_modelli = ["Citroën C3", "Alfa Romeo 147", "Fiat Panda", "Volkswagen Golf", "Ford Fiesta"]
+default_targhe = ["AA123BB", "CC456DD", "EE789FF", "GG012HH", "JJ345KK"]
+default_misure_veicoli = [
+    {"x1": 16.60, "z1": 2.50, "x2": 18.20, "z2": 2.70, "x3": 16.80, "z3": 0.50, "x4": 19.00, "z4": 0.70}, 
+    {"x1": 16.30, "z1": 7.80, "x2": 16.80, "z2": 10.55, "x3": 18.05, "z3": 7.80, "x4": 18.85, "z4": 10.55}  
+]
+
+elenco_veicoli = []
+for i in range(num_veicoli):
+    let = chr(65 + i)
+    st.write(f"--- **VEICOLO {let}** ---")
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
+        modello = st.text_input(f"Marca e Modello Veicolo {let}", value=default_modelli[i % 5], key=f"mod_{i}")
+        targa = st.text_input(f"Targa Veicolo {let}", value=default_targhe[i % 5], key=f"tg_{i}")
+    with col_v2:
+        if st.button(f"📍 Prendi GPS per Veicolo {let}", key=f"btn_gps_v_{i}"):
+            st.session_state[f"lat_v_{i}"] = 40.019580 + (i * 0.00001)
+            st.session_state[f"lon_v_{i}"] = 18.119050 + (i * 0.00001)
+            st.success(f"GPS Veicolo {let} agganciato!")
+        lat_v = st.number_input(f"Lat {let}", value=st.session_state.get(f"lat_v_{i}", 40.019580), format="%.6f", key=f"la_in_{i}")
+        lon_v = st.number_input(f"Lon {let}", value=st.session_state.get(f"lon_v_{i}", 18.119050), format="%.6f", key=f"lo_in_{i}")
+
+    dm = default_misure_veicoli[i] if i < len(default_misure_veicoli) else {"x1": 10.0, "z1": 2.0, "x2": 12.0, "z2": 2.0, "x3": 10.0, "z3": 4.0, "x4": 12.0, "z4": 4.0}
+    col_q1, col_q2, col_q3, col_q4 = st.columns(4)
+    with col_q1:
+        vx1 = st.number_input(f"{let}1-X", value=dm["x1"], key=f"{let}_x1")
+        vz1 = st.number_input(f"{let}1-Z", value=dm["z1"], key=f"{let}_z1")
+    with col_q2:
+        vx2 = st.number_input(f"{let}2-X", value=dm["x2"], key=f"{let}_x2")
+        vz2 = st.number_input(f"{let}2-Z", value=dm["z2"], key=f"{let}_z2")
+    with col_q3:
+        vx3 = st.number_input(f"{let}3-X", value=dm["x3"], key=f"{let}_x3")
+        vz3 = st.number_input(f"{let}3-Z", value=dm["z3"], key=f"{let}_z3")
+    with col_q4:
+        vx4 = st.number_input(f"{let}4-X", value=dm["x4"], key=f"{let}_x4")
+        vz4 = st.number_input(f"{let}4-Z", value=dm["z4"], key=f"{let}_z4")
+
+    foto_patente = st.file_uploader(f"📸 Patente Conducente {let}", type=["jpg", "png", "jpeg"], key=f"pat_{i}")
+    dati_cond = "ESTRATTO VERIFICATO" if (foto_patente or i==0) else "Non inserito"
+    
+    num_pass = st.number_input(f"Passeggeri {let}", min_value=0, max_value=5, value=(1 if i==0 else 0), key=f"n_p_{i}")
+    elenco_pass_v = []
+    for p in range(num_pass):
+        foto_doc = st.file_uploader(f"📸 Doc Passeggero {p+1} ({let})", type=["jpg", "png", "jpeg"], key=f"dc_{i}_{p}")
+        elenco_pass_v.append("Identificato" if foto_doc else "Presente")
+        
+    elenco_veicoli.append({"let": let, "modello": modello, "targa": targa, "lat": lat_v, "lon": lon_v, "cond": dati_cond, "pass": elenco_pass_v, "coords": [vx1, vz1, vx2, vz2, vx3, vz3, vx4, vz4]})
+
+st.divider()
 st.subheader("📏 Misure Dirette di Riscontro")
-dist_A1B1 = st.number_input("Distanza diretta A1 - B1 (m)", value=12.90)
-dist_A2B3 = st.number_input("Distanza diretta A2 - B3 (m)", value=11.40)
+dist_A1B1 = st.number_input("Distanza diretta A1 - B1 (m)", value=12.90, format="%.2f")
+dist_A2B3 = st.number_input("Distanza diretta A2 - B3 (m)", value=11.40, format="%.2f")
 
+st.divider()
+st.subheader("⚙️ Pannello Azione")
 esegui_ricalcolo = st.button("🏗️ ELABORA TUTTI I DATI E RIGENERA PLANIMETRIA TAVOLA GRAFICA", type="primary", use_container_width=True)
-
-# 3. ENGINE MATPLOTLIB RENDERING
-fig, ax = plt.subplots(figsize=(14, 9), dpi=150)
+# 3. ENGINE MATEMATICO DI RENDERING DELLA MAPPA STRADALE
+fig, ax = plt.subplots(figsize=(15, 9.5), dpi=180)
 ax.set_facecolor('#465a38')
 
-# Sede stradale principale
+# Disegno Sede Stradale principale (Asfalto grigio scuro)
 ax.fill_between([-10, dist_XZ + 15], -larg_carreggiata, 0, facecolor='#2f3542', alpha=0.95, zorder=1)
 ax.axhline(y=0, color='white', linestyle='-', linewidth=2.5, zorder=2)
 ax.axhline(y=-larg_carreggiata, color='white', linestyle='-', linewidth=2.5, zorder=2)
 ax.axhline(y=-larg_carreggiata/2, color='white', linestyle='--', linewidth=1.5, zorder=2)
 
-# Strada secondaria Cucci
+# Disegno Innesto Strada Secondaria (Str. Vicinale Cucci) obliqua
 vicinale_poly = patches.Polygon([[20, -larg_carreggiata], [23, -larg_carreggiata], [26, 4.0], [22, 4.0]], closed=True, facecolor='#2f3542', alpha=0.9, zorder=1)
 ax.add_patch(vicinale_poly)
 ax.text(24.5, 2.5, "Str. Vicinale Cucci", color='white', fontsize=8, rotation=50, weight='bold', alpha=0.8)
 
-# Capisaldi fissi X e Z
+# Tracciamento Linea di Base Capisaldi X-Z
 ax.scatter([0, dist_XZ], [0, 0], color='#e67e22', s=220, marker='X', edgecolor='white', zorder=10)
 ax.text(-0.5, 0.5, "Caposaldo X\n(Civico 57)", color='black', fontsize=9, fontweight='bold', ha='right')
 ax.text(dist_XZ + 0.5, 0.5, "Mira Z\n(Palo TIM N°)", color='black', fontsize=9, fontweight='bold', ha='left')
 ax.plot([0, dist_XZ], [0, 0], color='#e67e22', linestyle='-', linewidth=2.5, zorder=3)
 ax.text(dist_XZ/2, 0.3, f"X - Z = {dist_XZ:.2f} m", color='#e67e22', fontsize=11, fontweight='bold', ha='center', bbox=dict(facecolor='white', alpha=0.9))
 
-# Geometrie Veicolo A (Carreggiata)
-xa1, za1, xa2, za2, xa3, za3, xa4, za4 = 16.60, 2.50, 18.20, 2.70, 16.80, 0.50, 19.00, 0.70
-punti_A = [(xa1, -za1), (xa2, -za2), (xa4, -za4), (xa3, -za3)]
-ax.add_patch(patches.Polygon(punti_A, closed=True, facecolor='#1b9cfc', edgecolor='white', linewidth=1.5, zorder=6))
-ax.text((xa1+xa4)/2, (-za1-za3)/2, f"Veicolo A\n({modello_A})", color='white', fontsize=8, fontweight='bold', ha='center', zorder=8)
+colori_v = ['#1b9cfc', '#718093', '#2ecc71', '#9b59b6', '#1abc9c']
+colori_quote = ['#25ccf7', '#ff4757', '#95afc0', '#dff9fb', '#ffbe76']
 
-color_A = '#25ccf7'
-ax.plot([xa1, xa1], [0, -za1], color=color_A, linestyle=':', linewidth=1.2)
-ax.text(xa1, -za1/2, f"{xa1:.2f}", bbox=dict(facecolor='white', edgecolor=color_A, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center')
-ax.text(xa1 - 1.2, -za1, f"{za1:.2f}", bbox=dict(facecolor='white', edgecolor=color_A, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center')
-ax.plot([xa2, xa2], [0, -za2], color=color_A, linestyle=':')
-ax.text(xa2, -za2/2, f"{xa2:.2f}", bbox=dict(facecolor='white', edgecolor=color_A, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center')
+tutti_x = [0, dist_XZ, -5, dist_XZ + 5]
+tutti_y = [0, -larg_carreggiata, -larg_carreggiata - 3, 3]
 
-nomi_A = ["A1", "A2", "A4", "A3"]
-for idx, p in enumerate(punti_A):
-    ax.scatter(p[0], p[1], color=color_A, s=35, zorder=7, edgecolor='black')
-    ax.text(p[0], p[1] - 0.35, nomi_A[idx], color='white', fontsize=8, fontweight='bold', ha='center')
+# Disegno dinamico dei veicoli inseriti nell'anagrafica
+for idx, v in enumerate(elenco_veicoli):
+    q = v["coords"]
+    col_v = colori_v[idx % 5]
+    col_q = colori_quote[idx % 5]
+    
+    punti_g = [(q[0], -q[1]), (q[2], -q[3]), (q[6], -q[7]), (q[4], -q[5])]
+    poly = patches.Polygon(punti_g, closed=True, facecolor=col_v, edgecolor='white', linewidth=1.5, alpha=0.95, zorder=6)
+    ax.add_patch(poly)
+    
+    cx = sum(x for x, _ in punti_g) / 4
+    cy = sum(y for _, y in punti_g) / 4
+    ax.text(cx, cy, f"Veicolo {v['let']}\n({v['modello']})", color='white', fontsize=8, fontweight='bold', ha='center', zorder=8)
+    
+    # Linee di quota ortogonali per punto 1 e 2
+    ax.plot([q[0], q[0]], [0, -q[1]], color=col_q, linestyle=':', linewidth=1.2, zorder=4)
+    ax.text(q[0], -q[1]/2, f"{q[0]:.2f}", bbox=dict(facecolor='white', edgecolor=col_q, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center')
+    ax.text(q[0] - 1.2, -q[1], f"{q[1]:.2f}", bbox=dict(facecolor='white', edgecolor=col_q, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center')
+    
+    ax.plot([q[2], q[2]], [0, -q[3]], color=col_q, linestyle=':', linewidth=1.2, zorder=4)
+    ax.text(q[2], -q[3]/2, f"{q[2]:.2f}", bbox=dict(facecolor='white', edgecolor=col_q, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center')
 
-# Geometrie Veicolo B (Terreno/Erba)
-xb1, zb1, xb2, zb2, xb3, zb3, xb4, zb4 = 16.30, 7.80, 16.80, 10.55, 18.05, 7.80, 18.85, 10.55
-punti_B = [(xb1, -zb1), (xb3, -zb3), (xb4, -zb4), (xb2, -zb2)]
-ax.add_patch(patches.Polygon(punti_B, closed=True, facecolor='#718093', edgecolor='white', linewidth=1.5, zorder=6))
-ax.text((xb1+xb4)/2, (-zb1-zb2)/2, f"Veicolo B\n({modello_B})", color='white', fontsize=8, fontweight='bold', ha='center', zorder=8)
+    nomi_punti = ["1", "2", "4", "3"]
+    for p_idx, p in enumerate(punti_g):
+        ax.scatter(p[0], p[1], color=col_q, s=35, zorder=7, edgecolor='black')
+        ax.text(p[0], p[1] - 0.35, f"{v['let']}{nomi_punti[p_idx]}", color='white', fontsize=8, fontweight='bold', ha='center')
+        tutti_x.append(p[0])
+        tutti_y.append(p[1])
 
-color_B = '#ff4757'
-ax.plot([xb1, xb1], [0, -zb1], color=color_B, linestyle=':', linewidth=1.2)
-ax.text(xb1 - 0.8, -zb1 + 1.2, f"{xb1:.2f}", bbox=dict(facecolor='white', edgecolor=color_B, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center')
-ax.text(xb1 - 0.8, -zb1 + 2.5, f"{zb1:.2f}", bbox=dict(facecolor='white', edgecolor=color_B, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center')
-ax.plot([xb3, xb3], [0, -zb3], color=color_B, linestyle=':')
-ax.text(xb3 + 0.8, -zb3 + 1.2, f"{xb3:.2f}", bbox=dict(facecolor='white', edgecolor=color_B, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center')
-
-nomi_B = ["B1", "B3", "B4", "B2"]
-for idx, p in enumerate(punti_B):
-    ax.scatter(p[0], p[1], color=color_B, s=35, zorder=7, edgecolor='black')
-    ax.text(p[0], p[1] + 0.35, nomi_B[idx], color='white', fontsize=8, fontweight='bold', ha='center')
-
-# Linee dirette d'urto
-ax.plot([xa1, xb1], [-za1, -zb1], color='#2ecc71', linewidth=2)
-ax.text((xa1+xb1)/2, (-za1-zb1)/2, f"A1-B1={dist_A1B1:.2f}m", color='#2ecc71', fontsize=8, weight='bold', bbox=dict(facecolor='black', alpha=0.8))
-ax.plot([xa2, xb3], [-za2, -zb3], color='#db00d4', linewidth=2)
-ax.text((xa2+xb3)/2, (-za2-zb3)/2, f"A2-B3={dist_A2B3:.2f}m", color='#db00d4', fontsize=8, weight='bold', bbox=dict(facecolor='black', alpha=0.8))
+# Linee di riscontro diagonali dirette d'impatto (Se ci sono almeno 2 veicoli)
+if len(elenco_veicoli) >= 2:
+    vA, vB = elenco_veicoli[0]["coords"], elenco_veicoli[1]["coords"]
+    ax.plot([vA[0], vB[0]], [-vA[1], -vB[1]], color='#2ecc71', linestyle='-', linewidth=2, zorder=5)
+    ax.text((vA[0]+vB[0])/2, (-vA[1]-vB[1])/2, f"A1 - B1 = {dist_A1B1:.2f} m", color='#2ecc71', fontsize=8, fontweight='bold', bbox=dict(facecolor='black', alpha=0.8), ha='center')
+    ax.plot([vA[2], vB[4]], [-vA[3], -vB[5]], color='#db00d4', linestyle='-', linewidth=2, zorder=5)
+    ax.text((vA[2]+vB[4])/2, (-vA[3]-vB[5])/2, f"A2 - B3 = {dist_A2B3:.2f} m", color='#db00d4', fontsize=8, fontweight='bold', bbox=dict(facecolor='black', alpha=0.8), ha='center')
 
 # Diciture di provenienza stradale e margini
-ax.annotate("Provenienza TAVIANO", xy=(-3, -1), xytext=(2, -1), color='white', weight='bold', fontsize=9, arrowprops=dict(arrowstyle="<-", color="white"))
-ax.annotate("Provenienza MATINO", xy=(-3, -larg_carreggiata + 1), xytext=(2, -larg_carreggiata + 1), color='white', weight='bold', fontsize=9, arrowprops=dict(arrowstyle="->", color="white"))
+ax.annotate("Provenienza TAVIANO (Direzione Matino)", xy=(-3, -1), xytext=(2, -1), color='white', weight='bold', fontsize=9, arrowprops=dict(arrowstyle="<-", color="white", linewidth=1.5))
+ax.annotate("Provenienza MATINO (Direzione Taviano)", xy=(-3, -larg_carreggiata + 1), xytext=(2, -larg_carreggiata + 1), color='white', weight='bold', fontsize=9, arrowprops=dict(arrowstyle="->", color="white", linewidth=1.5))
 
 ax.plot([-4, -4], [0, -larg_carreggiata], color='white', linewidth=1.2)
 ax.text(-4.5, -larg_carreggiata/2, f"cd = {larg_carreggiata:.2f} m", color='white', rotation=90, fontsize=9, weight='bold', va='center')
 
-# PARTE RICHIESTA NELLO SCREENSHOT (Parametri e inquadratura limiti)
+# Box parametri strada fisso sul disegno
 info_strada_testo = f"PARAMETRI STRADA:\nLarghezza carreggiata: {larg_carreggiata:.2f} m\nBase X-Z: {dist_XZ:.2f} m"
 ax.text(-4, -larg_carreggiata - 2.5, info_strada_testo, color='white', fontsize=8, weight='bold', bbox=dict(facecolor='black', alpha=0.5, boxstyle='round,pad=0.3'))
 
-tutti_x = [0, dist_XZ, -5, dist_XZ + 5, xa1, xa2, xb1, xb3]
-tutti_y = [0, -larg_carreggiata, -larg_carreggiata - 3, 3, -za1, -za2, -zb1, -zb3]
+# Inquadratura limiti ed ottimizzazione assi
 ax.set_xlim(min(tutti_x) - 2, max(tutti_x) + 2)
 ax.set_ylim(min(tutti_y) - 2, max(tutti_y) + 2)
 ax.set_aspect('equal')
 ax.axis('off')
 
+# Mostra lo schizzo planimetrico nell'area dedicata in alto
 with contenitore_mappa:
     st.pyplot(fig)
 
-# 4. GENERAZIONE FILE PDF
+# 4. PREPARAZIONE BUFFER ESPORTAZIONE DOCUMENTO PDF CON CORREZIONE PIL
 img_buf = io.BytesIO()
 plt.savefig(img_buf, format='png', bbox_inches='tight', dpi=180)
 img_buf.seek(0)
-plt.close(fig)
+immagine_pil = Image.open(img_buf)
 
 pdf_buf = io.BytesIO()
 p_canvas = canvas.Canvas(pdf_buf, pagesize=landscape(letter))
@@ -141,7 +216,8 @@ p_canvas.rect(15, 15, larg_p - 30, alt_p - 30)
 p_canvas.setFont("Helvetica-Bold", 13)
 p_canvas.drawString(30, alt_p - 35, "RELAZIONE PLANIMETRICA ILLUSTRAZIONE SINISTRO STRADALE")
 p_canvas.line(30, alt_p - 42, larg_p - 30, alt_p - 42)
-p_canvas.drawImage(img_buf, 25, 140, width=larg_p - 50, height=265, preserveAspectRatio=True)
+
+p_canvas.drawInlineImage(immagine_pil, 25, 140, width=larg_p - 50, height=265)
 p_canvas.line(30, 132, larg_p - 30, 132)
 
 p_canvas.setFont("Helvetica-Bold", 9)
@@ -152,22 +228,25 @@ p_canvas.drawString(30, 85, f"Località: {localita}  ||  Data/Ora: {data_ora}")
 p_canvas.drawString(30, 70, f"Larghezza Sede: {larg_carreggiata:.2f} m  ||  Linea Base X-Z: {dist_XZ:.2f} m")
 
 p_canvas.setFont("Helvetica-Bold", 9)
-p_canvas.drawString(350, 115, "MEZZI COINVOLTI:")
+p_canvas.drawString(350, 115, "MEZZI E TERZI COINVOLTI:")
 p_canvas.setFont("Helvetica", 8)
-p_canvas.drawString(350, 100, f"Veicolo A: {modello_A} ({targa_A})")
-p_canvas.drawString(350, 87, f"Veicolo B: {modello_B} ({targa_B})")
+y_pos = 100
+for v in elenco_veicoli:
+    p_canvas.drawString(350, y_pos, f"Veicolo {v['let']}: {v['modello']} ({v['targa']}) - Conducente: {v['cond']}")
+    y_pos -= 13
 
 p_canvas.showPage()
 p_canvas.save()
 pdf_buf.seek(0)
 
+# Pulsante di download a fondo pagina
 if esegui_ricalcolo:
-    st.success("✨ Tavola grafica aggiornata con successo!")
+    st.success("✨ Tavola grafica aggiornata nei moduli superiori!")
 
 st.download_button(
-    label="📥 SCARICA TAVOLA PLANIMETRICA AGGIORNATA IN FORMATO PDF VETTORIALE",
+    label="📥 SCARICA TAVOLA PLANIMETRICA IN FORMATO PDF VETTORIALE",
     data=pdf_buf,
     file_name="Tavola_Planimetrica_Sinistro.pdf",
     mime="application/pdf",
     use_container_width=True
-)
+    )
