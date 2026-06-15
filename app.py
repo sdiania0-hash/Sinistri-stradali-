@@ -129,7 +129,7 @@ if avvia_elaborazione:
     st.header("📊 Risultati Grafici e Download Report")
     st.success("✨ Elaborazione completata con successo!")
     
-    fig, ax = plt.subplots(figsize=(14, 9), dpi=150)
+    fig, ax = plt.subplots(figsize=(15, 9.5), dpi=180)
     ax.set_facecolor('#465a38')  # Terreno banchina erba
     
     # Sede Stradale asfalto
