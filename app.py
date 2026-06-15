@@ -36,7 +36,7 @@ operanti = st.text_input("Personale Operante", value="Brig. Rima G., V.B. Rizzo 
 localita = st.text_input("Località / Via / Progressiva Km", value="SP55 Matino-Taviano")
 data_ora = st.text_input("Data e Ora del Rilievo", value="15/06/2026 | ORE: 06:50")
 larg_carreggiata = st.number_input("Larghezza Sede Stradale cd (metri)", min_value=2.0, max_value=20.0, value=6.60, on_change=reset_grafico)
-note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Strada Provinciale SP55, carreggiata a doppio senso di circulación. Fondo stradale: asfalto asciutto. Condizioni di luce: diurna. Presenza di intersezione con strada vicinale (Str. Vicinale Cucci). Nel corso del sopralluogo non sono state rilevate tracce di frenata.")
+note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Strada Provinciale SP55, carreggiata a doppio senso di circolazione. Fondo stradale: asfalto asciutto. Condizioni di luce: diurna. Presenza di intersezione con strada vicinale (Str. Vicinale Cucci). Nel corso del sopralluogo non sono state rilevate tracce di frenata.")
 
 st.divider()
 st.subheader("Fissaggio Linea di Base (Capisaldi)")
@@ -48,7 +48,7 @@ with col_cx:
         st.session_state["lon_x_real"] = 18.118944
         st.success("Coordinate Caposaldo X registrate!")
     lat_x = st.number_input("Latitudine Caposaldo X", value=st.session_state.get("lat_x_real", 40.019572), format="%.6f")
-    lon_x = st.number_input("Longitudine Caposaldo X", value=st.session_state.get("lon_x_real", 18.118944), format="%.6f")
+    lon_x = st.number_input("Longitudine Caposaldo X", value=st.session_state.get("lon_x_saved", 18.118944), format="%.6f")
 
 with col_cz:
     if st.button("📍 Inserisci GPS Attuale -> Mira Z"):
@@ -70,10 +70,9 @@ default_targhe = ["AA123BB", "CC456DD", "EE789FF", "GG012HH", "JJ345KK"]
 default_lats = [40.019585, 40.019565, 40.019595, 40.019555, 40.019575]
 default_lons = [18.119050, 18.119060, 18.119120, 18.119150, 18.119180]
 
-# Valori metrici cartesiani predefiniti per i primi due veicoli di esempio dello schizzo
 default_misure_veicoli = [
-    {"x1": 16.60, "z1": 11.55, "x2": 18.20, "z2": 11.00, "x3": 16.80, "z3": 13.50, "x4": 19.00, "z4": 13.00}, # Veicolo A
-    {"x1": 16.30, "z1": 10.55, "x2": 16.80, "z2": 8.00, "x3": 18.05, "z3": 8.70, "x4": 18.85, "z4": 6.50}   # Veicolo B
+    {"x1": 16.60, "z1": 2.50, "x2": 18.20, "z2": 2.70, "x3": 16.80, "z3": 0.50, "x4": 19.00, "z4": 0.70}, # Veicolo A
+    {"x1": 16.30, "z1": 7.80, "x2": 16.80, "z2": 10.55, "x3": 18.05, "z3": 7.80, "x4": 18.85, "z4": 10.55}  # Veicolo B
 ]
 
 elenco_veicoli = []
@@ -153,12 +152,6 @@ for j in range(num_pedoni):
         
     elenco_pedoni.append({"idx": j+1, "dettaglio": dati_pedone, "lat": lat_p, "lon": lon_p, "x": px_cart, "z": pz_cart})
 
-# --- Misure Dirette di Riscontro per la leggenda ---
-st.divider()
-st.subheader("📏 Misure di Riscontro Dirette (Opzionali per Tavola)")
-dist_A1B1 = st.number_input("Misura d'accoppiamento diretta A1 - B1 (m)", value=12.90, format="%.2f")
-dist_A2B3 = st.number_input("Misura d'accoppiamento diretta A2 - B3 (m)", value=11.40, format="%.2f")
-
 
 # --- 5. LOGICA DI RENDERING DEL GRAFICO VETTORIALE ---
 if st.session_state["elaborazione_attiva"]:
@@ -166,3 +159,10 @@ if st.session_state["elaborazione_attiva"]:
         st.subheader("📊 Schizzo Planimetrico Dinamico Ricostruito")
         st.success("✨ Elaborazione completata con successo!")
         
+        fig, ax = plt.subplots(figsize=(15, 9.5), dpi=180)
+        ax.set_facecolor('#465a38')  # Sfondo terreno banchina erba
+        
+        # Disegno Sede Stradale (Asfalto sotto la linea X-Z)
+        ax.fill_between([-10, dist_XZ + 15], -larg_carreggiata, 0, facecolor='#2f3542', alpha=0.95, zorder=1)
+        ax.axhline(y=0, color='white', linestyle='-', linewidth=2.5, zorder=2)
+        ax.axhline(y=-larg_carreggiata, color='white', linestyle='-', linewidth=2.5, zorder=2)
