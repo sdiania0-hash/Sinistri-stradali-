@@ -96,20 +96,6 @@ with col_qB4:
 foto_pat_B = st.file_uploader("📸 Carica Foto Patente Conducente B", type=["jpg", "png", "jpeg"])
 
 st.divider()
-st.subheader("🚶 Configurazione Pedoni / Terzi Coinvolti")
-# RISOLTO IL BUG DELLE OPZIONI VUOTE: Inserito l'array numerico [0, 1, 2, 3]
-num_pedoni = st.selectbox("Quanti pedoni sono coinvolti?", options=[0, 1, 2, 3], index=0)
-elenco_pedoni = []
-for j in range(num_pedoni):
-    st.write(f"*Pedone {j+1}*")
-    col_p1, col_p2 = st.columns(2)
-    with col_p1:
-        px = st.number_input(f"Pedone {j+1} - Distanza X (m)", value=15.0, key=f"px_{j}")
-    with col_p2:
-        pz = st.number_input(f"Pedone {j+1} - Quota Z (m)", value=4.0, key=f"pz_{j}")
-    elenco_pedoni.append({"idx": j+1, "x": px, "z": pz})
-
-st.divider()
 st.subheader("📏 Misure Dirette di Riscontro")
 dist_A1B1 = st.number_input("Distanza diretta accoppiamento A1 - B1 (m)", value=12.90, format="%.2f")
 dist_A2B3 = st.number_input("Distanza diretta accoppiamento A2 - B3 (m)", value=11.40, format="%.2f")
@@ -141,7 +127,6 @@ ax.text(-0.5, 0.5, "Caposaldo X\n(Civico 57)", color='black', fontsize=9, fontwe
 ax.scatter(dist_XZ, 0, color='#e67e22', s=220, marker='X', edgecolor='white', zorder=10)
 ax.text(dist_XZ + 0.5, 0.5, "Mira Z\n(Palo TIM N°)", color='black', fontsize=9, fontweight='bold', ha='left', bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=0.1'))
 
-# RISOLTO IL BUG DELLA DOPPIA VIRGOLA: Rimossa la virgola muta di interruzione
 ax.plot([0, dist_XZ], [0, 0], color='#e67e22', linestyle='-', linewidth=2.5, zorder=3)
 ax.text(dist_XZ/2, 0.3, f"X - Z = {dist_XZ:.2f} m", color='#e67e22', fontsize=11, fontweight='bold', ha='center', bbox=dict(facecolor='white', alpha=0.9, boxstyle='round,pad=0.2'))
 
@@ -175,3 +160,13 @@ poly_B = patches.Polygon(punti_B, closed=True, facecolor='#718093', edgecolor='w
 ax.add_patch(poly_B)
 
 cx_B = sum(p for p, _ in punti_B) / 4
+cy_B = sum(p for _, p in punti_B) / 4
+ax.text(cx_B, cy_B, f"Veicolo B\n({modello_B})", color='white', fontsize=8, fontweight='bold', ha='center', zorder=8)
+
+# Quote Ortogonali Rosse Veicolo B con cartellini bianchi
+color_B = '#ff4757'
+# Punto B1
+ax.plot([xb1, xb1], [0, -zb1], color=color_B, linestyle=':', linewidth=1.2, zorder=4)
+ax.text(xb1 - 0.8, -zb1 + 1.2, f"{xb1:.2f}", bbox=dict(facecolor='white', edgecolor=color_B, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center', weight='bold')
+ax.text(xb1 - 0.8, -zb1 + 2.5, f"{zb1:.2f}", bbox=dict(facecolor='white', edgecolor=color_B, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center', weight='bold')
+# Punto B3
