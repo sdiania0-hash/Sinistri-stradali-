@@ -11,7 +11,7 @@ from reportlab.pdfgen import canvas
 # 1. IMPOSTAZIONI INTERFACCIA WEB
 st.set_page_config(page_title="Terminale Rilievo Planimetrico Universale", layout="centered")
 st.title("🚓 Terminale di Rilievo Planimetrico Universale GPS")
-st.info("💡 Modifica i dati nei moduli, acquisisci le posizioni GPS o i documenti e premi il pulsante rosso in fondo per generare la tavola e il PDF.")
+st.info("💡 Modifica i dati nei moduli, acquisisci le posizioni GPS o i documenti e premi il pulsante rosso in fondo per generare la tavola grafica completa di legenda.")
 
 # Riquadro contenitore superiore per mantenere la planimetria fissa in alto
 contenitore_mappa = st.container()
@@ -117,7 +117,7 @@ st.divider()
 st.subheader("⚙️ Pannello Azione")
 esegui_ricalcolo = st.button("🏗️ ELABORA TUTTI I DATI E RIGENERA PLANIMETRIA TAVOLA GRAFICA", type="primary", use_container_width=True)
 # 3. ENGINE MATEMATICO DI RENDERING DELLA MAPPA STRADALE
-fig, ax = plt.subplots(figsize=(15, 9.5), dpi=180)
+fig, ax = plt.subplots(figsize=(17, 9.5), dpi=180)
 ax.set_facecolor('#465a38')
 
 # Disegno Sede Stradale principale (Asfalto grigio scuro)
@@ -144,6 +144,9 @@ colori_quote = ['#25ccf7', '#ff4757', '#95afc0', '#dff9fb', '#ffbe76']
 tutti_x = [0, dist_XZ, -5, dist_XZ + 5]
 tutti_y = [0, -larg_carreggiata, -larg_carreggiata - 3, 3]
 
+# Testo riassuntivo per la colonna tecnica della legenda
+testo_legenda_misure = "📋 MATRICE MISURE STRADALI\n" + "-"*35 + "\n"
+
 # Disegno dinamico dei veicoli inseriti nell'anagrafica
 for idx, v in enumerate(elenco_veicoli):
     q = v["coords"]
@@ -167,21 +170,33 @@ for idx, v in enumerate(elenco_veicoli):
     ax.text(q[2], -q[3]/2, f"{q[2]:.2f}", bbox=dict(facecolor='white', edgecolor=col_q, boxstyle='square,pad=0.15'), fontsize=7.5, ha='center')
 
     nomi_punti = ["1", "2", "4", "3"]
+    testo_legenda_misure += f"\n🔹 VEICOLO {v['let']} ({v['targa']}):\n"
     for p_idx, p in enumerate(punti_g):
         ax.scatter(p[0], p[1], color=col_q, s=35, zorder=7, edgecolor='black')
         ax.text(p[0], p[1] - 0.35, f"{v['let']}{nomi_punti[p_idx]}", color='white', fontsize=8, fontweight='bold', ha='center')
         tutti_x.append(p[0])
         tutti_y.append(p[1])
+        
+        # Estrazione corretta dei dati per valorizzare la tabella laterale
+        x_val = q[p_idx*2]
+        z_val = q[p_idx*2+1]
+        testo_legenda_misure += f" P{nomi_punti[p_idx]} -> X: {x_val:.2f} m | Z: {z_val:.2f} m\n"
 
 # Linee di riscontro diagonali dirette d'impatto (Se ci sono almeno 2 veicoli)
 if len(elenco_veicoli) >= 2:
-    vA, vB = elenco_veicoli[0]["coords"], elenco_veicoli[1]["coords"]
-    ax.plot([vA[0], vB[0]], [-vA[1], -vB[1]], color='#2ecc71', linestyle='-', linewidth=2, zorder=5)
-    ax.text((vA[0]+vB[0])/2, (-vA[1]-vB[1])/2, f"A1 - B1 = {dist_A1B1:.2f} m", color='#2ecc71', fontsize=8, fontweight='bold', bbox=dict(facecolor='black', alpha=0.8), ha='center')
-    ax.plot([vA[2], vB[4]], [-vA[3], -vB[5]], color='#db00d4', linestyle='-', linewidth=2, zorder=5)
-    ax.text((vA[2]+vB[4])/2, (-vA[3]-vB[5])/2, f"A2 - B3 = {dist_A2B3:.2f} m", color='#db00d4', fontsize=8, fontweight='bold', bbox=dict(facecolor='black', alpha=0.8), ha='center')
+    xA1, zA1 = elenco_veicoli[0]["coords"][0], elenco_veicoli[0]["coords"][1]
+    xB1, zb1 = elenco_veicoli[1]["coords"][0], elenco_veicoli[1]["coords"][1]
+    ax.plot([xA1, xB1], [-zA1, -zb1], color='#2ecc71', linestyle='-', linewidth=2, zorder=5)
+    ax.text((xA1+xB1)/2, (-zA1-zb1)/2, f"A1 - B1 = {dist_A1B1:.2f} m", color='#2ecc71', fontsize=8, fontweight='bold', bbox=dict(facecolor='black', alpha=0.8), ha='center')
+    
+    xA2, zA2 = elenco_veicoli[0]["coords"][2], elenco_veicoli[0]["coords"][3]
+    xB3, zb3 = elenco_veicoli[1]["coords"][4], elenco_veicoli[1]["coords"][5]
+    ax.plot([xA2, xB3], [-zA2, -zb3], color='#db00d4', linestyle='-', linewidth=2, zorder=5)
+    ax.text((xA2+xB3)/2, (-zA2-zb3)/2, f"A2 - B3 = {dist_A2B3:.2f} m", color='#db00d4', fontsize=8, fontweight='bold', bbox=dict(facecolor='black', alpha=0.8), ha='center')
+    
+    testo_legenda_misure += f"\n📏 RISCONTRI DIRETTI:\n Dist. A1 - B1: {dist_A1B1:.2f} m\n Dist. A2 - B3: {dist_A2B3:.2f} m\n"
 
-# Diciture di provenienza stradale e margini
+# Frecce direzionali di provenienza stradale e margini
 ax.annotate("Provenienza TAVIANO (Direzione Matino)", xy=(-3, -1), xytext=(2, -1), color='white', weight='bold', fontsize=9, arrowprops=dict(arrowstyle="<-", color="white", linewidth=1.5))
 ax.annotate("Provenienza MATINO (Direzione Taviano)", xy=(-3, -larg_carreggiata + 1), xytext=(2, -larg_carreggiata + 1), color='white', weight='bold', fontsize=9, arrowprops=dict(arrowstyle="->", color="white", linewidth=1.5))
 
@@ -192,9 +207,13 @@ ax.text(-4.5, -larg_carreggiata/2, f"cd = {larg_carreggiata:.2f} m", color='whit
 info_strada_testo = f"PARAMETRI STRADA:\nLarghezza carreggiata: {larg_carreggiata:.2f} m\nBase X-Z: {dist_XZ:.2f} m"
 ax.text(-4, -larg_carreggiata - 2.5, info_strada_testo, color='white', fontsize=8, weight='bold', bbox=dict(facecolor='black', alpha=0.5, boxstyle='round,pad=0.3'))
 
-# Inquadratura limiti ed ottimizzazione assi
-ax.set_xlim(min(tutti_x) - 2, max(tutti_x) + 2)
-ax.set_ylim(min(tutti_y) - 2, max(tutti_y) + 2)
+# --- NUOVA COLONNA LEGENDA E TESTI A LATO DESTRO ---
+limite_max_x = max(tutti_x) + 3
+ax.text(limite_max_x + 1, max(tutti_y), testo_legenda_misure, color='white', fontsize=8.5, family='monospace', va='top', ha='left', bbox=dict(facecolor='#1e272e', alpha=0.9, edgecolor='white', boxstyle='round,pad=0.5'))
+
+# Inquadratura limiti ed ottimizzazione assi estesi per comprendere il testo laterale
+ax.set_xlim(min(tutti_x) - 2, limite_max_x + 16)
+ax.set_ylim(min(tutti_y) - 4, max(tutti_y) + 2)
 ax.set_aspect('equal')
 ax.axis('off')
 
@@ -241,7 +260,7 @@ pdf_buf.seek(0)
 
 # Pulsante di download a fondo pagina
 if esegui_ricalcolo:
-    st.success("✨ Tavola grafica aggiornata nei moduli superiori!")
+    st.success("✨ Tavola grafica con legenda aggiornata nei moduli superiori!")
 
 st.download_button(
     label="📥 SCARICA TAVOLA PLANIMETRICA IN FORMATO PDF VETTORIALE",
@@ -249,4 +268,4 @@ st.download_button(
     file_name="Tavola_Planimetrica_Sinistro.pdf",
     mime="application/pdf",
     use_container_width=True
-    )
+)
