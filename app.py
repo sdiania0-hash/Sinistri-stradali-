@@ -124,7 +124,7 @@ st.divider()
 st.subheader("⚙️ Esegui Elaborazione Grafica")
 avvia_elaborazione = st.button("🏗️ ELABORA TUTTI I DATI E GENERA PLANIMETRIA TAVOLA GRAFICA", type="primary", use_container_width=True)
 
-# --- BLOCCO RENDERING (SI ATTIVA SOLO DOPO IL CLICK) ---
+# --- BLOCCO RENDERING ---
 if avvia_elaborazione:
     st.header("📊 Risultati Grafici e Download Report")
     st.success("✨ Elaborazione completata con successo!")
