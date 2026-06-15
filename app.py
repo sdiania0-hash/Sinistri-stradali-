@@ -14,25 +14,23 @@ st.set_page_config(page_title="Rilievo Tecnico Professionale Base", layout="cent
 st.title("🚓 Terminale di Rilievo Planimetrico Universale GPS")
 st.info("💡 Compila i moduli in basso e premi il pulsante rosso per generare la tavola grafica e scaricare il PDF.")
 
-# --- INIZIALIZZAZIONE STATO MEMORIA PER EVITARE BLOCCHI ---
-if "esegui_elaborazione" not in st.session_state:
-    st.session_state["esegui_elaborazione"] = False
+# --- 1. GESTIONE PERSISTENZA STATO (Risolve il blocco dell'applicazione) ---
+if "stato_elaborazione" not in st.session_state:
+    st.session_state["stato_elaborazione"] = False
 
-# Funzione di utilità per resettare lo stato se cambiano le configurazioni dei moduli
-def reset_elaborazione():
-    st.session_state["esegui_elaborazione"] = False
+# Funzione per forzare il reset del grafico se l'utente cambia parametri strutturali
+def reset_grafico():
+    st.session_state["stato_elaborazione"] = False
 
-# --- SEZIONE AZIONE PRINCIPALE IN ALTO ---
+# --- 2. POSIZIONAMENTO CONTENITORE OUTPUT (In alto per immediata visibilità) ---
 st.subheader("⚙️ Pannello di Controllo Generale")
-
-# Il click attiva la memoria persistente nello stato della sessione
 if st.button("🏗️ ELABORA TUTTI I DATI E GENERA PLANIMETRIA", type="primary", use_container_width=True):
-    st.session_state["esegui_elaborazione"] = True
+    st.session_state["stato_elaborazione"] = True
 
-# Contenitore dinamico posizionato in alto per mostrare subito i risultati senza scorrere
-area_risultati = st.container()
+# Contenitore dove comparirà il grafico non appena premuto il tasto sopra
+contenitore_output = st.container()
 
-# --- SEZIONE INSERIMENTO DATI INFERIORE ---
+# --- 3. SEZIONE INSERIMENTO DATI INFERIORE ---
 st.header("1. Protocollo di Acquisizione Dati sul Campo")
 
 st.subheader("Dati Identificativi Verbale")
@@ -46,27 +44,26 @@ note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Strada
 st.divider()
 st.subheader("Fissaggio Linea di Base (Capisaldi)")
 
-# Pulsanti GPS con salvataggio persistente nello stato per evitare azzeramenti
+# Gestione pulsanti coordinate capisaldi con salvataggio sicuro in session_state
 if st.button("📍 Inserisci GPS Attuale -> Caposaldo X"):
-    st.session_state["lat_x_real"] = 40.019572
-    st.session_state["lon_x_real"] = 18.118944
+    st.session_state["lat_x_saved"] = 40.019572
+    st.session_state["lon_x_saved"] = 18.118944
     st.success("Coordinate Caposaldo X registrate!")
     
-lat_x = st.number_input("Latitudine Caposaldo X", value=st.session_state.get("lat_x_real", 40.019572), format="%.6f")
-lon_x = st.number_input("Longitudine Caposaldo X", value=st.session_state.get("lon_x_real", 18.118944), format="%.6f")
+lat_x = st.number_input("Latitudine Caposaldo X", value=st.session_state.get("lat_x_saved", 40.019572), format="%.6f")
+lon_x = st.number_input("Longitudine Caposaldo X", value=st.session_state.get("lon_x_saved", 18.118944), format="%.6f")
 
 if st.button("📍 Inserisci GPS Attuale -> Mira Z"):
-    st.session_state["lat_z_real"] = 40.019590
-    st.session_state["lon_z_real"] = 18.119230
+    st.session_state["lat_z_saved"] = 40.019590
+    st.session_state["lon_z_saved"] = 18.119230
     st.success("Coordinate Mira Z registrate!")
     
-lat_z = st.number_input("Latitudine Mira Z", value=st.session_state.get("lat_z_real", 40.019590), format="%.6f")
-lon_z = st.number_input("Longitudine Mira Z", value=st.session_state.get("lon_z_real", 18.119230), format="%.6f")
+lat_z = st.number_input("Latitudine Mira Z", value=st.session_state.get("lat_z_saved", 40.019590), format="%.6f")
+lon_z = st.number_input("Longitudine Mira Z", value=st.session_state.get("lon_z_saved", 18.119230), format="%.6f")
 
 st.divider()
 st.subheader("Anagrafica Veicoli e Passeggeri a Bordo")
-# Se l'utente cambia il numero di veicoli, resettiamo lo stato grafico per evitare bug di calcolo
-num_veicoli = st.selectbox("Quanti veicoli sono coinvolti nell'incidente?", options=[2, 3, 4, 5], index=0, on_change=reset_elaborazione)
+num_veicoli = st.selectbox("Quanti veicoli sono coinvolti nell'incidente?", options=[2, 3, 4, 5], index=0, on_change=reset_grafico)
 
 default_modelli = ["Citroën C3", "Alfa Romeo 147", "Fiat Panda", "Volkswagen Golf", "Ford Fiesta"]
 default_targhe = ["AA123BB", "CC456DD", "EE789FF", "GG012HH", "JJ345KK"]
@@ -84,10 +81,10 @@ for i in range(num_veicoli):
     if st.button(f"📍 Prendi GPS Attuale per Veicolo {let}", key=f"btn_gps_v_{i}"):
         st.session_state[f"lat_v_{i}"] = default_lats[i]
         st.session_state[f"lon_v_{i}"] = default_lons[i]
-        st.success(f"Posizione GPS Veicolo {let} registrata!")
+        st.success(f"Posizione GPS Veicolo {let} archiviata!")
         
-    lat_v = st.number_input(f"Latitudine GPS Veicolo {let}", value=st.session_state.get(f"lat_v_{i}", default_lats[i]), format="%.6f", key=f"lat_v_input_{i}")
-    lon_v = st.number_input(f"Longitudine GPS Veicolo {let}", value=st.session_state.get(f"lon_v_{i}", default_lons[i]), format="%.6f", key=f"lon_v_input_{i}")
+    lat_v = st.number_input(f"Latitudine GPS Veicolo {let}", value=st.session_state.get(f"lat_v_{i}", default_lats[i]), format="%.6f", key=f"lat_v_val_{i}")
+    lon_v = st.number_input(f"Longitudine GPS Veicolo {let}", value=st.session_state.get(f"lon_v_{i}", default_lons[i]), format="%.6f", key=f"lon_v_val_{i}")
     
     st.write(f"*Conducente e Passeggeri Veicolo {let}*")
     foto_patente = st.file_uploader(f"📸 Foto Patente Conducente {let}", type=["jpg", "png", "jpeg"], key=f"pat_{i}")
@@ -105,7 +102,7 @@ for i in range(num_veicoli):
 
 st.divider()
 st.subheader("Anagrafica Pedoni / Terzi Coinvolti (A parte)")
-num_pedoni = st.selectbox("Quanti pedoni indipendenti ci sono sulla carreggiata?", options=[0, 1, 2, 3], index=0, on_change=reset_elaborazione)
+num_pedoni = st.selectbox("Quanti pedoni indipendenti ci sono sulla carreggiata?", options=[0, 1, 2, 3], index=0, on_change=reset_grafico)
 elenco_pedoni = []
 
 for j in range(num_pedoni):
@@ -118,16 +115,16 @@ for j in range(num_pedoni):
         st.session_state[f"lon_p_{j}"] = 18.119100
         st.success(f"Posizione GPS Pedone {j+1} registrata!")
         
-    lat_p = st.number_input(f"Latitudine GPS Pedone {j+1}", value=st.session_state.get(f"lat_p_{j}", 40.019550), format="%.6f", key=f"lat_p_input_{j}")
-    lon_p = st.number_input(f"Longitudine GPS Pedone {j+1}", value=st.session_state.get(f"lon_p_{j}", 18.119100), format="%.6f", key=f"lon_p_input_{j}")
+    lat_p = st.number_input(f"Latitudine GPS Pedone {j+1}", value=st.session_state.get(f"lat_p_{j}", 40.019550), format="%.6f", key=f"lat_p_val_{j}")
+    lon_p = st.number_input(f"Longitudine GPS Pedone {j+1}", value=st.session_state.get(f"lon_p_{j}", 18.119100), format="%.6f", key=f"lon_p_val_{j}")
     elenco_pedoni.append({"idx": j+1, "dettaglio": dati_pedone, "lat": lat_p, "lon": lon_p})
 
 
-# --- BLOCCO LOGICO DI ELABORAZIONE (DENTRO L'AREA CONTENITORE) ---
-if st.session_state["esegui_elaborazione"]:
-    with area_risultati:
+# --- 4. BLOCCO ATTIVAZIONE E PROCESSO GRAFICO ---
+if st.session_state["stato_elaborazione"]:
+    with contenitore_output:
         st.subheader("📊 Risultato Grafico e Download")
-        st.success("✨ Elaborazione completata!")
+        st.success("✨ Elaborazione completata ed elaborata con successo!")
 
         # Algoritmo Haversine GPS -> Metri
         def gps_a_metri(lat1, lon1, lat2, lon2):
@@ -138,44 +135,44 @@ if st.session_state["esegui_elaborazione"]:
             y = dphi * R
             return x, y
 
+        # Calcolo punti capisaldi
         x_z, y_z = gps_a_metri(lat_x, lon_x, lat_z, lon_z)
         base_calcolata = math.sqrt(x_z**2 + y_z**2)
         
-        # Generazione Grafica Matplotlib
-        fig, ax = plt.subplots(figsize=(10, 6), dpi=120)
+        # Inizializzazione Canvas Matplotlib
+        fig, ax = plt.subplots(figsize=(11, 6), dpi=130)
         fig.patch.set_facecolor('#ffffff')
         
-        # Sfondo e Sede Stradale asfalto
-        cornice = patches.Rectangle((-20, -15), base_calcolata + 40, larg_carreggiata + 30, linewidth=1.5, edgecolor='black', facecolor='none')
+        # Disegno dei confini stradali esterni e asfalto
+        cornice = patches.Rectangle((-20, -15), base_calcolata + 40, larg_carreggiata + 30, linewidth=1.2, edgecolor='black', facecolor='none')
         ax.add_patch(cornice)
-        
-        strada = patches.Rectangle((-20, -larg_carreggiata/2), base_calcolata + 40, larg_carreggiata, facecolor='#333333', alpha=0.9, zorder=1)
+        strada = patches.Rectangle((-20, -larg_carreggiata/2), base_calcolata + 40, larg_carreggiata, facecolor='#3a3a3a', alpha=0.9, zorder=1)
         ax.add_patch(strada)
-        ax.axhline(y=0, color='white', linestyle='--', linewidth=1.5, zorder=2)
+        ax.axhline(y=0, color='white', linestyle='--', linewidth=1.2, zorder=2)
         
-        # Capisaldi fissi di misurazione
-        ax.scatter(0, 0, color='#e67e22', s=150, zorder=5, edgecolor='black', marker='X')
-        ax.scatter(x_z, y_z, color='#e67e22', s=150, zorder=5, edgecolor='black', marker='X')
-        ax.text(0, -larg_carreggiata, "Caposaldo X", fontsize=9, fontweight='bold', ha='center', color='black')
-        ax.text(x_z, y_z - larg_carreggiata, "Mira Z", fontsize=9, fontweight='bold', ha='center', color='black')
+        # Posizionamento Capisaldi (X e Z)
+        ax.scatter(0, 0, color='#e67e22', s=160, zorder=5, edgecolor='black', marker='X')
+        ax.scatter(x_z, y_z, color='#e67e22', s=160, zorder=5, edgecolor='black', marker='X')
+        ax.text(0, -larg_carreggiata - 1.5, "Caposaldo X\n(Origine 0,0)", fontsize=8, fontweight='bold', ha='center')
+        ax.text(x_z, y_z - larg_carreggiata - 1.5, "Mira Z\n(Riferimento)", fontsize=8, fontweight='bold', ha='center')
         
-        # Posizionamento dinamico Veicoli nel grafico
-        colori_v = ['#3498db', '#e74c3c', '#2ecc71', '#9b59b6', '#1abc9c']
+        # Rendering geometrico Veicoli nel piano metrico cartesiano
+        colori_v = ['#2980b9', '#c0392b', '#27ae60', '#8e44ad', '#16a085']
         for idx, v in enumerate(elenco_veicoli):
             cx, cy = gps_a_metri(lat_x, lon_x, v["lat"], v["lon"])
             colore = colori_v[idx % len(colori_v)]
             
-            # Box indicativo ingombro mezzo (4x2 metri standard)
-            rettangolo_v = patches.Rectangle((cx - 2, cy - 1), 4, 2, linewidth=1.2, edgecolor='black', facecolor=colore, alpha=0.8, zorder=4)
+            # Rappresentazione del veicolo (rettangolo proporzionale)
+            rettangolo_v = patches.Rectangle((cx - 2, cy - 1), 4, 2, linewidth=1, edgecolor='black', facecolor=colore, alpha=0.8, zorder=4)
             ax.add_patch(rettangolo_v)
-            ax.text(cx, cy + 1.5, f"Veicolo {v['let']}\n({v['targa']})", fontsize=8, ha='center', fontweight='bold')
-            ax.scatter(cx, cy, color='black', s=25, zorder=5)
+            ax.text(cx, cy + 1.6, f"Veicolo {v['let']}\n({v['targa']})", fontsize=8, ha='center', fontweight='bold')
+            ax.scatter(cx, cy, color='black', s=20, zorder=5)
 
-        # Posizionamento Pedoni
+        # Rendering Pedoni
         for p in elenco_pedoni:
             px, py = gps_a_metri(lat_x, lon_x, p["lat"], p["lon"])
-            ax.scatter(px, py, color='#f1c40f', s=100, marker='o', edgecolor='black', zorder=5)
-            ax.text(px, py + 1.2, f"Pedone {p['idx']}", fontsize=8, ha='center', weight='bold')
+            ax.scatter(px, py, color='#f1c40f', s=110, marker='o', edgecolor='black', zorder=5)
+            ax.text(px, py + 1.3, f"Pedone {p['idx']}", fontsize=8, ha='center', weight='bold')
 
-        # Impostazioni assi e proporzioni geometriche
+        # Ottimizzazione e scalatura geometrica coerente
         
