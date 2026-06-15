@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 
-# Configurazione della pagina web
+# Configurazione della pagina dell'applicazione web
 st.set_page_config(page_title="Generatore Planimetrico Professionale", layout="wide")
 st.title("🚓 Sistema di Generazione e Stampa Rilievi")
 st.info("💡 Inserisci i dati e premi il tasto in fondo per scaricare la tavola ufficiale pronta in PDF.")
@@ -113,17 +113,16 @@ with col2:
     
     st.pyplot(fig)
 
-    # --- SISTEMA DI ESPORTAZIONE IN PDF ---
+    # Scrittura immagine in memoria per il PDF
     img_buf = io.BytesIO()
     plt.savefig(img_buf, format='png', bbox_inches='tight', dpi=300)
     img_buf.seek(0)
     plt.close()
 
-    # Creazione del pacchetto PDF finale in memoria
+    # Creazione del pacchetto PDF finale
     pdf_buf = io.BytesIO()
     p = canvas.Canvas(pdf_buf, pagesize=landscape(letter))
     
-    # Inserimento della tavola grafica a tutta pagina nel foglio PDF
     p.drawInlineImage(img_buf, 0.25*inch, 0.25*inch, width=10.5*inch, height=8*inch)
     p.showPage()
     
@@ -156,11 +155,9 @@ with col2:
     pdf_buf.seek(0)
 
     st.divider()
-    # Grande pulsante ufficiale di download del file finito
     st.download_button(
         label="📥 SCARICA TAVOLA E VERBALE IN PDF (Pronto da stampare)",
         data=pdf_buf,
         file_name=f"Rilievo_Planimetrico_{localita.replace(' ', '_')}.pdf",
         mime="application/pdf"
     )
-    
