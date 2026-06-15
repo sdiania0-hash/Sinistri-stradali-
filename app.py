@@ -140,6 +140,7 @@ ax.text(-0.5, 0.5, "Caposaldo X\n(Civico 57)", color='black', fontsize=9, fontwe
 ax.scatter(dist_XZ, 0, color='#e67e22', s=220, marker='X', edgecolor='white', zorder=10)
 ax.text(dist_XZ + 0.5, 0.5, "Mira Z\n(Palo TIM N°)", color='black', fontsize=9, fontweight='bold', ha='left', bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=0.1'))
 
+# SBLOCCATA LA RIGA ERRENEA PRECEDENTE: Rimossa la virgola muta di interruzione
 ax.plot([0, dist_XZ], [0, 0], color='#e67e22', linestyle='-', linewidth=2.5, zorder=3)
 ax.text(dist_XZ/2, 0.3, f"X - Z = {dist_XZ:.2f} m", color='#e67e22', fontsize=11, fontweight='bold', ha='center', bbox=dict(facecolor='white', alpha=0.9, boxstyle='round,pad=0.2'))
 
@@ -148,8 +149,8 @@ punti_A = [(xa1, -za1), (xa2, -za2), (xa4, -za4), (xa3, -za3)]
 poly_A = patches.Polygon(punti_A, closed=True, facecolor='#1b9cfc', edgecolor='white', linewidth=1.5, alpha=0.95, zorder=6)
 ax.add_patch(poly_A)
 
-cx_A = sum(p[0] for p in punti_A) / 4
-cy_A = sum(p[1] for p in punti_A) / 4
+cx_A = sum(p for p, _ in punti_A) / 4
+cy_A = sum(p for _, p in punti_A) / 4
 ax.text(cx_A, cy_A, f"Veicolo A\n({modello_A})", color='white', fontsize=8, fontweight='bold', ha='center', zorder=8)
 
 # Quote Ortogonali Azzurre Veicolo A con cartellini bianchi
@@ -164,15 +165,13 @@ ax.text(xa2, -za2/2, f"{xa2:.2f}", bbox=dict(facecolor='white', edgecolor=color_
 
 nomi_A = ["A1", "A2", "A4", "A3"]
 for idx, p in enumerate(punti_A):
-    ax.scatter(p[0], p[1], color=color_A, s=35, zorder=7, edgecolor='black')
-    ax.text(p[0], p[1] - 0.35, nomi_A[idx], color='white', fontsize=8, fontweight='bold', ha='center')
+    ax.scatter(p, p, color=color_A, s=35, zorder=7, edgecolor='black')
+    ax.text(p, p - 0.35, nomi_A[idx], color='white', fontsize=8, fontweight='bold', ha='center')
 
 # DISEGNO DETTAGLIATO VEICOLO B (Sagoma Grigio Scuro)
 punti_B = [(xb1, -zb1), (xb3, -zb3), (xb4, -zb4), (xb2, -zb2)]
 poly_B = patches.Polygon(punti_B, closed=True, facecolor='#718093', edgecolor='white', linewidth=1.5, alpha=0.95, zorder=6)
 ax.add_patch(poly_B)
 
-cx_B = sum(p[0] for p in punti_B) / 4
-cy_B = sum(p[1] for p in punti_B) / 4
-ax.text(cx_B, cy_B, f"Veicolo B\n({modello_B})", color='white', fontsize=8, fontweight='bold', ha='center', zorder=8)
-
+cx_B = sum(p for p, _ in punti_B) / 4
+cy_B = sum(p for _, p in punti_B) / 4
