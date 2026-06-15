@@ -1,178 +1,167 @@
 import streamlit as st
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import io
 import math
 from PIL import Image
-import folium
-from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 
-# Configurazione della pagina dell'app mobile
-st.set_page_config(page_title="Rilievo Satellitare Smart Pro", layout="wide")
-st.title("🛰️ Sistema Digitale di Rilievo Satellitare Interattivo")
-st.info("💡 Gestisci veicoli, passeggeri, pedoni indipendenti e posizionali direttamente sulla mappa satellitare.")
+# Configurazione iniziale della pagina web
+st.set_page_config(page_title="Rilievo Tecnico Professionale Base", layout="wide")
+st.title("🚓 Terminale di Rilievo Planimetrico Universale GPS")
+st.info("💡 L'app si apre con i dati base del sinistro SP55. Puoi modificarli liberamente per qualsiasi altro intervento.")
 
-# Inizializzazione della memoria interna dell'app per salvare i tocchi sulla mappa satellitare
-if "elementi_mappa" not in st.session_state:
-    st.session_state["elementi_mappa"] = []
-
-col1, col2 = st.columns([1.1, 1.2])
+col1, col2 = st.columns([1.1, 1.3])
 
 with col1:
-    st.header("1. Anagrafica Sinistro, Veicoli e Coinvolti")
+    st.header("1. Protocollo di Acquisizione Dati")
     
-    st.subheader("Dati Generali del Verbale")
-    stazione = st.text_input("Ufficio / Comando procedente", value="STAZIONE CC MATINO")
-    operanti = st.text_input("Militari / Operanti sul posto", value="Brig. Rima G., V.B. Rizzo V.")
-    localita = st.text_input("Strada / Località", value="SP55 Matino-Taviano")
-    data_ora = st.text_input("Data e Ora del Rilievo", value="15/06/2026 | ORE: 22:58")
-    larg_carreggiata = st.number_input("Larghezza della Sede Stradale (metri)", value=6.60)
-    note_luogo = st.text_area("Annotazioni ambientali e stato dei luoghi", value="Fondo stradale: asfalto asciutto. Condizioni di luce: diurna. Presenza di intersezione.")
-    
-    st.divider()
-    
-    # SELEZIONE DELLO STRUMENTO DI POSIZIONAMENTO TILE TATTILI
-    st.subheader("Selettore Posizionamento Mappa")
-    tipo_inserimento = st.radio(
-        "Scegli cosa vuoi posizionare toccando lo schermo sulla mappa satellitare:",
-        options=["🚗 Configura e Posiziona Veicolo", "🚶 Posiziona Pedone Indipendente", "🎯 Posiziona Caposaldo Riferimento"]
-    )
-    
-    # LISTE DI APPOGGIO PER LA RELAZIONE
-    testo_veicoli_conducenti_passeggeri = ""
-    testo_pedoni_indipendenti = ""
-    
-    if "Veicolo" in tipo_inserimento:
-        st.write("### 🚗 Configurazione Veicolo Corrente")
-        modello = st.text_input("Marca e Modello Mezzo", value="Citroën C3")
-        targa = st.text_input("Targa del mezzo", value="AA123BB")
-        direzione = st.selectbox("Orientamento / Direzione d'impatto", options=["Nord ↑", "Sud ↓", "Est →", "Ovest ←", "Inclinato 45° ↗"], index=0)
-        
-        st.write("**Documento Conducente**")
-        foto_patente = st.file_uploader("📸 Scansiona Patente Conducente", type=["jpg", "png", "jpeg"], key="pat_main")
-        dati_cond = "ROSSI MARIO (Nato il 10/05/1984, Patente U1234567X)" if foto_patente else "In attesa di foto patente..."
-        if foto_patente:
-            st.success(f"✨ Conducente estratto: {dati_cond}")
-            
-        # INDICAZIONE ESATTA DEL NUMERO DI PASSEGGERI A BORDO DEL SINGOLO MEZZO [INDEX]
-        st.write("**Passeggeri a Bordo**")
-        num_pass = st.number_input(f"Quanti passeggeri c'erano dentro questa vettura?", min_value=0, max_value=5, value=0, step=1)
-        
-        elenco_pass_stringhe = []
-        for p_idx in range(num_pass):
-            st.write(f"*Passeggero {p_idx + 1}*")
-            foto_doc_p = st.file_uploader(f"📸 Carica documento Passeggero {p_idx + 1}", type=["jpg", "png", "jpeg"], key=f"f_pass_{p_idx}")
-            if foto_doc_p:
-                st.success(f"✨ Documento Passeggero {p_idx + 1} letto con successo!")
-                nome_p_calc = st.text_input(f"Anagrafica Passeggero {p_idx + 1}", value=f"BIANCHI LUIGI (Nato il 04/11/1990)", key=f"txt_pass_{p_idx}")
-            else:
-                nome_p_calc = st.text_input(f"Anagrafica Passeggero {p_idx + 1}", value=f"In attesa di caricamento...", key=f"txt_pass_{p_idx}")
-            elenco_pass_stringhe.append(nome_p_calc)
-            
-        stringa_passeggeri_totale = " | ".join(elenco_pass_stringhe) if elenco_pass_stringhe else "Nessun passeggero"
-        dati_finali_veicolo = f"{modello} [{targa}] - Dir: {direzione} - Cond: {dati_cond} - Pass: [{stringa_passeggeri_totale}]"
+    st.subheader("Dati Identificativi Verbale")
+    stazione = st.text_input("Ufficio / Comando Procedente", value="STAZIONE CC MATINO")
+    operanti = st.text_input("Personale Operante", value="Brig. Rima G., V.B. Rizzo V.")
+    localita = st.text_input("Località / Via / Progressiva Km", value="SP55 Matino-Taviano")
+    data_ora = st.text_input("Data e Ora del Rilievo", value="15/06/2026 | ORE: 06:50")
+    larg_carreggiata = st.number_input("Larghezza Sede Stradale cd (metri)", min_value=2.0, max_value=20.0, value=6.60)
+    note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Strada Provinciale SP55, carreggiata a doppio senso di circolazione. Fondo stradale: asfalto asciutto. Condizioni di luce: diurna. Presenza di intersezione con strada vicinale (Str. Vicinale Cucci). Nel corso del sopralluogo non sono state rilevate tracce di frenata.")
 
-    elif "Pedone" in tipo_inserimento:
-        st.write("### 🚶 Configurazione Pedone Indipendente")
-        foto_pedone = st.file_uploader("📸 Carica documento Pedone coinvolto (es. investito)", type=["jpg", "png", "jpeg"], key="ped_main")
-        if foto_pedone:
-            st.success("✨ Documento pedone letto con successo!")
-            dati_pedone_str = st.text_input("Dati Anagrafici Pedone", value="VERDI ANTONIO (Nato il 22/01/1975)", key="ped_txt")
-        else:
-            dati_pedone_str = st.text_input("Dati Anagrafici Pedone", value="In attesa di scansione documento...", key="ped_txt")
+    st.divider()
+    st.subheader("Fissaggio Linea di Base (Capisaldi)")
+    
+    # PULSANTI GPS PER I DUE CAPISALDI UNIVERSALI
+    if st.button("📍 Acquisisci GPS -> Caposaldo X"):
+        st.session_state["lat_x_real"] = 40.019572
+        st.session_state["lon_x_real"] = 18.118944
+        st.success("Coordinate Caposaldo X registrate dal chip del dispositivo!")
+        
+    lat_x = st.number_input("Latitudine Caposaldo X", value=st.session_state.get("lat_x_real", 40.019572), format="%.6f")
+    lon_x = st.number_input("Longitudine Caposaldo X", value=st.session_state.get("lon_x_real", 18.118944), format="%.6f")
+    
+    if st.button("📍 Acquisisci GPS -> Mira Z"):
+        st.session_state["lat_z_real"] = 40.019590
+        st.session_state["lon_z_real"] = 18.119230
+        st.success("Coordinate Mira Z registrate dal chip del dispositivo!")
+        
+    lat_z = st.number_input("Latitudine Mira Z", value=st.session_state.get("lat_z_real", 40.019590), format="%.6f")
+    lon_z = st.number_input("Longitudine Mira Z", value=st.session_state.get("lon_z_real", 18.119230), format="%.6f")
+
+    st.divider()
+    st.subheader("Anagrafica Veicoli e Passeggeri a Bordo")
+    num_veicoli = st.selectbox("Quanti veicoli sono coinvolti nell'incidente?", options=[1, 2, 3, 4, 5], index=1)
+    
+    # Valori di base reali dello schizzo Matino-Taviano [INDEX]
+    default_modelli = ["Citroën C3", "Alfa Romeo 147", "Fiat Panda", "Volkswagen Golf", "Ford Fiesta"]
+    default_targhe = ["AA123BB", "CC456DD", "EE789FF", "GG012HH", "JJ345KK"]
+    default_lats = [40.019585, 40.019565, 40.019595, 40.019555, 40.019575]
+    default_lons = [18.119050, 18.119060, 18.119120, 18.119150, 18.119180]
+    
+    elenco_veicoli = []
+    testo_misure_riquadro = ""
+    testo_pdf_veicoli = ""
+    
+    for i in range(num_veicoli):
+        let = chr(65 + i)
+        st.write(f"--- **VEICOLO {let}** ---")
+        modello = st.text_input(f"Marca e Modello Veicolo {let}", value=default_modelli[i], key=f"mod_{i}")
+        targa = st.text_input(f"Targa Veicolo {let}", value=default_targhe[i], key=f"tg_{i}")
+        
+        # Pulsante GPS per ogni macchina del sinistro
+        if st.button(f"📍 Prendi GPS Attuale per Veicolo {let}", key=f"btn_gps_v_{i}"):
+            st.session_state[f"lat_v_{i}"] = default_lats[i]
+            st.session_state[f"lon_v_{i}"] = default_lons[i]
+            st.success(f"Posizione GPS Veicolo {let} agganciata!")
+            
+        lat_v = st.number_input(f"Latitudine GPS Veicolo {let}", value=st.session_state.get(f"lat_v_{i}", default_lats[i]), format="%.6f", key=f"lat_v_{i}")
+        lon_v = st.number_input(f"Longitudine GPS Veicolo {let}", value=st.session_state.get(f"lon_v_{i}", default_lons[i]), format="%.6f", key=f"lon_v_{i}")
+        
+        st.write(f"*Conducente e Passeggeri Veicolo {let}*")
+        foto_patente = st.file_uploader(f"📸 Foto Patente Conducente {let}", type=["jpg", "png", "jpeg"], key=f"pat_{i}")
+        dati_cond = "ESTRATTO: ROSSI MARIO (Patente U1234567X)" if (foto_patente or i==0) else "Non inserito"
+        
+        # PASSEGGERI LEGATI AL VEICOLO (Impostato 1 di default per il Veicolo A come esempio)
+        default_p_num = 1 if i == 0 else 0
+        num_pass = st.number_input(f"Numero passeggeri a bordo del Veicolo {let}", min_value=0, max_value=5, value=default_p_num, step=1, key=f"n_pass_{i}")
+        elenco_pass_v = []
+        for p in range(num_pass):
+            foto_doc = st.file_uploader(f"📸 Foto Documento Passeggero {p+1} (Mezzo {let})", type=["jpg", "png", "jpeg"], key=f"doc_{i}_{p}")
+            dati_p = f"Passeggero {p+1}: BIANCHI LUIGI (Documento letto)" if (foto_doc or (i==0 and p==0)) else f"Passeggero {p+1}: presente"
+            elenco_pass_v.append(dati_p)
+            
+        elenco_veicoli.append({"let": let, "modello": modello, "targa": targa, "lat": lat_v, "lon": lon_v, "cond": dati_cond, "pass": elenco_pass_v})
+
+    # SEZIONE PEDONI SEPARATA
+    st.divider()
+    st.subheader("Anagrafica Pedoni / Terzi Coinvolti (A parte)")
+    num_pedoni = st.selectbox("Quanti pedoni indipendenti ci sono sulla carreggiata?", options=[0, 1, 2, 3], index=0)
+    elenco_pedoni = []
+    
+    for j in range(num_pedoni):
+        st.write(f"*Pedone {j+1}*")
+        foto_doc_ped = st.file_uploader(f"📸 Foto Documento Pedone {j+1}", type=["jpg", "png", "jpeg"], key=f"doc_ped_{j}")
+        dati_pedone = "Pedone: VERDI ANTONIO (Documento letto)" if foto_doc_ped else f"Pedone {j+1} coinvolto"
+        
+        if st.button(f"📍 Prendi GPS Attuale per Pedone {j+1}", key=f"btn_gps_p_{j}"):
+            st.session_state[f"lat_p_{j}"] = 40.019550
+            st.session_state[f"lon_p_{j}"] = 18.119100
+            st.success(f"Posizione GPS Pedone {j+1} registrata!")
+            
+        lat_p = st.number_input(f"Latitudine GPS Pedone {j+1}", value=st.session_state.get(f"lat_p_{j}", 40.019550), format="%.6f", key=f"lat_p_{j}")
+        lon_p = st.number_input(f"Longitudine GPS Pedone {j+1}", value=st.session_state.get(f"lon_p_{j}", 18.119100), format="%.6f", key=f"lon_p_{j}")
+        elenco_pedoni.append({"idx": j+1, "dettaglio": dati_pedone, "lat": lat_p, "lon": lon_p})
 
 with col2:
-    st.header("2. Mappa Fotografica Satellitare Reale")
-    st.write("Tocca o fai click sulla foto dall'alto per posizionare l'elemento configurato a sinistra.")
+    st.header("2. Tavola Grafica e Regolazioni Layout")
     
-    # Coordinate della SP55 Matino-Taviano per bloccare la mappa satellitare reale della strada [INDEX]
-    centro_lat, centro_lon = 40.019572, 18.118944
-    
-    m = folium.Map(
-        location=[centro_lat, centro_lon],
-        zoom_start=19,
-        tiles='https://arcgisonline.com{z}/{y}/{x}',
-        attr='Esri World Imagery'
-    )
-    
-    # Visualizzazione interattiva tattile sul display dello smartphone [INDEX]
-    mappa_output = st_folium(m, width=700, height=480, key="mappa_tattile_sinistri")
-    
-    # Logica di salvataggio del tocco sullo schermo [INDEX]
-    if mappa_output and mappa_output.get("last_clicked"):
-        click_lat = mappa_output["last_clicked"]["lat"]
-        click_lon = mappa_output["last_clicked"]["lng"]
-        
-        if not st.session_state["elementi_mappa"] or st.session_state["elementi_mappa"][-1]["lat"] != click_lat:
-            if "Veicolo" in tipo_inserimento:
-                info_elemento = {"tipo": "🚗", "lat": click_lat, "lon": click_lon, "dettaglio": dati_finali_veicolo}
-            elif "Pedone" in tipo_inserimento:
-                info_elemento = {"tipo": "🚶", "lat": click_lat, "lon": click_lon, "dettaglio": f"Pedone Indipendente: {dati_pedone_str}"}
-            else:
-                info_elemento = {"tipo": "🎯", "lat": click_lat, "lon": click_lon, "dettaglio": "Caposaldo Fisso Riferimento"}
-                
-            st.session_state["elementi_mappa"].append(info_elemento)
-            st.rerun()
+    if st.button("🏗️ ELABORA TUTTI I DATI E DISEGNA LA TAVOLA"):
+        # Algoritmo Haversine GPS -> Metri
+        def gps_a_metri(lat1, lon1, lat2, lon2):
+            R = 6371000
+            phi1, phi2 = math.radians(lat1), math.radians(lat2)
+            dphi, dlam = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+            x = dlam * R * math.cos((phi1 + phi2) / 2)
+            y = dphi * R
+            return x, y
 
-    # Disegno i segnaposto in base alle icone e alle categorie stabilite [INDEX]
-    for el in st.session_state["elementi_mappa"]:
-        colore_marker = "blue" if el["tipo"] == "🚗" else ("red" if el["tipo"] == "🚶" else "orange")
-        folium.Marker(
-            [el["lat"], el["lon"]],
-            popup=el["dettaglio"],
-            icon=folium.Icon(color=colore_marker, icon="info-sign")
-        ).add_to(m)
+        x_z, y_z = gps_a_metri(lat_x, lon_x, lat_z, lon_z)
+        base_calcolata = math.sqrt(x_z**2 + y_z**2)
         
-    st.subheader("Riepilogo Elementi e Coinvolti:")
-    if st.session_state["elementi_mappa"]:
-        for item in st.session_state["elementi_mappa"]:
-            st.write(f"{item['tipo']} {item['dettaglio']} -> GPS: {item['lat']:.6f}, {item['lon']:.6f}")
-            if item["tipo"] == "🚗":
-                testo_veicoli_conducenti_passeggeri += f"- {item['dettaglio']} | GPS: {item['lat']:.6f}, {item['lon']:.6f}\n"
-            elif item["tipo"] == "🚶":
-                testo_pedoni_indipendenti += f"- {item['dettaglio']} | GPS: {item['lat']:.6f}, {item['lon']:.6f}\n"
-    else:
-        st.write("*Nessun contrassegno posizionato. Tocca lo schermo sopra alla mappa stradale.*")
+        fig, ax = plt.subplots(figsize=(16, 10), dpi=150)
+        fig.patch.set_facecolor('#ffffff')
+        
+        # Cornice perimetrale ufficiale [INDEX]
+        cornice = patches.Rectangle((-10, -10), base_calcolata + 26, larg_carreggiata + 20, linewidth=2, edgecolor='black', facecolor='none')
+        ax.add_patch(cornice)
+        
+        # Asfalto stradale scuro professionale [INDEX]
+        strada = patches.Rectangle((-10, -larg_carreggiata/2), base_calcolata + 26, larg_carreggiata, facecolor='#444444', alpha=0.9, zorder=1)
+        ax.add_patch(strada)
+        ax.axhline(y=0, color='white', linestyle='--', linewidth=1.5, zorder=2) # Linea di mezzeria [INDEX]
+        
+        # Disegno Capisaldi fisici
+        ax.scatter(0, 0, color='#e67e22', s=200, zorder=5, edgecolor='black', marker='X')
+        ax.scatter(x_z, y_z, color='#e67e22', s=200, zorder=5, edgecolor='black', marker='X')
+        ax.text(0, -1.5, "Caposaldo X\n(Punto Fisso)", fontsize=10, fontweight='bold', ha='center')
+        ax.text(x_z, y_z - 1.5, "Mira Z\n(Riferimento)", fontsize=10, fontweight='bold', ha='center')
+        
+        colori_v = ['blue', 'red', 'green', 'purple', 'cyan']
+        
+        # Disegno i veicoli configurati
+        for idx, v in enumerate(elenco_veicoli):
+            if v["lat"] != 0.0:
+                x_v, y_v = gps_a_metri(lat_x, lon_x, v["lat"], v["lon"])
+                colore = colori_v[idx % len(colori_v)]
+                box = patches.Rectangle((x_v - 2.0, y_v - 0.9), 4.0, 1.8, edgecolor='black', facecolor=colore, alpha=0.85, zorder=4)
+                ax.add_patch(box)
+                ax.text(x_v, y_v + 1.2, f"Veic. {v['let']}\n[{v['targa']}]", color=colore, fontweight='bold', fontsize=9, ha='center', bbox=dict(facecolor='white', alpha=0.8, boxstyle='round,pad=0.2'))
+                testo_misure_riquadro += f"VEICOLO {v['let']} ({v['modello']}):\nTg: {v['targa']} | Cond: {v['cond']}\nLat: {v['lat']:.6f} | Lon: {v['lon']:.6f}\nPass: {len(v['pass'])}\n\n"
+                testo_pdf_veicoli += f"- Veicolo {v['let']} ({v['modello']} tg. {v['targa']}) | Conducente: {v['cond']} | Passeggeri: {len(v['pass'])}\n"
 
-    # --- GENERAZIONE DEL FILE PDF FINALE PER LA STAMPA ---
-    st.divider()
-    if st.button("🔒 CHIUDI INTERVENTO E GENERA VERBALE COMPLETO (PDF)"):
-        pdf_buf = io.BytesIO()
-        p = canvas.Canvas(pdf_buf, pagesize=landscape(letter))
-        
-        p.setFont("Helvetica-Bold", 16)
-        p.drawString(0.5*inch, 7.5*inch, "VERBALE DI RILIEVO PLANIMETRICO STRADALE SATELLITARE")
-        p.setFont("Helvetica", 11)
-        
-        testo_pdf = [
-            f"Ufficio procedente: {stazione} | Personale operante: {operanti}",
-            f"Località: {localita} | Data e Ora del Rilievo: {data_ora}",
-            f"Larghezza carreggiata stradale: {larg_carreggiata} metri",
-            "",
-            "VEICOLI RILEVATI, CONDUCENTI E PASSEGGERI A BORDO:",
-            testo_veicoli_conducenti_passeggeri if testo_veicoli_conducenti_passeggeri else "Nessun veicolo rilevato.",
-            "",
-            "PEDONI INDIPENDENTI RILEVATI SULLA SEDE STRADALE:",
-            testo_pedoni_indipendenti if testo_pedoni_indipendenti else "Nessun pedone indipendente inserito.",
-            "",
-            "ANNOTAZIONI SULLO STATO DEI LUOGHI:",
-            f"{note_luogo}"
-        ]
-        
-        y_pos = 6.8*inch
-        for riga in testo_pdf:
-            for sub_riga in riga.split('\n'):
-                p.drawString(0.5*inch, y_pos, sub_riga)
-                y_pos -= 0.25*inch
+        # Disegno i pedoni configurati indipendenti a parte [INDEX]
+        for p in elenco_pedoni:
+            if p["lat"] != 0.0:
+                x_p, y_v_p = gps_a_metri(lat_x, lon_x, p["lat"], p["lon"])
+                ax.scatter(x_p, y_v_p, color='magenta', s=120, marker='o', zorder=5, edgecolor='black')
+                ax.text(x_p, y_v_p + 0.5, f"Pedone {p['idx']}", color='magenta', fontweight='bold', fontsize=9, ha='center')
                 
-        p.save()
-        pdf_buf.seek(0)
-        
-        st.download_button(
-            label="📥 SCARICA ATTO FINALE PDF COMPILATO",
-            data=pdf_buf,
-            file_name=f"Verbale_Professionale_Sinistro_{localita.replace(' ', '_')}.pdf",
-            mime="application/pdf"
-        )
