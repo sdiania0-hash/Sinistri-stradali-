@@ -7,24 +7,19 @@ import math
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.pdfgen import canvas
 
-# Configurazione iniziale della pagina per dispositivi mobili e desktop
+# Configurazione della pagina Streamlit
 st.set_page_config(page_title="Terminale di Rilievo Planimetrico Universale", layout="centered")
 st.title("🚓 Terminale di Rilievo Planimetrico Universale GPS")
-st.info("💡 La tavola grafica iniziale mostra il sinistro di riferimento. Modifica i parametri in basso e clicca sul pulsante rosso per rigenerare il disegno.")
+st.info("💡 Modifica i moduli in basso e premi il pulsante rosso in fondo per generare la planimetria grafica e il PDF.")
 
-# --- 1. GESTIONE DEI DATI DI DEFAULT (IL TUO SINISTRO DI RIFERIMENTO) ---
-if "dati_inizializzati" not in st.session_state:
-    st.session_state["dati_inizializzati"] = True
-    # Stato di memorizzazione per i pulsanti GPS
+# --- INIZIALIZZAZIONE MEMORIA STATO ---
+if "lat_x_real" not in st.session_state:
     st.session_state["lat_x_real"] = 40.019572
     st.session_state["lon_x_real"] = 18.118944
     st.session_state["lat_z_real"] = 40.019590
     st.session_state["lon_z_real"] = 18.119230
 
-# --- 2. CONTENITORE DELLA TAVOLA GRAFICA (VISIBILE DA SUBITO) ---
-zona_grafico = st.container()
-
-# --- 3. SEZIONE INSERIMENTO DATI INFERIORE ---
+# --- SEZIONE INSERIMENTO DATI STRUTTURATA ---
 st.header("1. Protocollo di Acquisizione Dati sul Campo")
 
 st.subheader("Dati Identificativi Verbale")
@@ -63,7 +58,6 @@ num_veicoli = st.selectbox("Quanti veicoli sono coinvolti nell'incidente?", opti
 default_modelli = ["Citroën C3", "Alfa Romeo 147", "Fiat Panda", "Volkswagen Golf", "Ford Fiesta"]
 default_targhe = ["AA123BB", "CC456DD", "EE789FF", "GG012HH", "JJ345KK"]
 
-# Misure reali convertite dallo schizzo originale (X, Z) per i quattro spigoli
 default_misure_veicoli = [
     {"x1": 16.60, "z1": 2.50, "x2": 18.20, "z2": 2.70, "x3": 16.80, "z3": 0.50, "x4": 19.00, "z4": 0.70}, # Veicolo A
     {"x1": 16.30, "z1": 7.80, "x2": 16.80, "z2": 10.55, "x3": 18.05, "z3": 7.80, "x4": 18.85, "z4": 10.55}  # Veicolo B
@@ -125,14 +119,20 @@ with col_r1:
 with col_r2:
     dist_A2B3 = st.number_input("Distanza diretta A2 - B3 (m)", value=11.40, format="%.2f")
 
-# --- 4. ENGINE DI DISEGNO MATPLOTLIB (ESECUTO SEMPRE PER MOSTRARE IL GRAFICO) ---
-with zona_grafico:
-    st.subheader("📊 Schizzo Planimetrico di Rilievo Tecnico")
+# --- IL TASTO DI ELABORAZIONE GENERALE IN FONDO ---
+st.divider()
+st.subheader("⚙️ Esegui Elaborazione Grafica")
+avvia_elaborazione = st.button("🏗️ ELABORA TUTTI I DATI E GENERA PLANIMETRIA TAVOLA GRAFICA", type="primary", use_container_width=True)
+
+# --- BLOCCO RENDERING (SI ATTIVA SOLO DOPO IL CLICK) ---
+if avvia_elaborazione:
+    st.header("📊 Risultati Grafici e Download Report")
+    st.success("✨ Elaborazione completata con successo!")
     
     fig, ax = plt.subplots(figsize=(15, 9.5), dpi=180)
-    ax.set_facecolor('#465a38')  # Terreno erboso perimetrale
+    ax.set_facecolor('#465a38')  # Terreno banchina erba
     
-    # Rappresentazione asfalto (Sviluppato verso il basso da Y=0 a Y=-larg_carreggiata)
+    # Sede Stradale asfalto
     ax.fill_between([-10, dist_XZ + 15], -larg_carreggiata, 0, facecolor='#2f3542', alpha=0.95, zorder=1)
     ax.axhline(y=0, color='white', linestyle='-', linewidth=2.5, zorder=2)
     ax.axhline(y=-larg_carreggiata, color='white', linestyle='-', linewidth=2.5, zorder=2)
@@ -144,7 +144,7 @@ with zona_grafico:
     ax.add_patch(vicinale_poly)
     ax.text(24.5, 2.5, "Str. Vicinale Cucci", color='white', fontsize=8, rotation=50, weight='bold', alpha=0.8)
 
-    # Linea di base Capisaldi X-Z superiore
+    # Capisaldi Linea di Base X-Z superiore
     ax.scatter(0, 0, color='#e67e22', s=220, marker='X', edgecolor='white', zorder=10)
     ax.text(-0.5, 0.5, "Caposaldo X\n(Civico 57)", color='black', fontsize=9, fontweight='bold', ha='right', bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=0.1'))
     
@@ -160,7 +160,7 @@ with zona_grafico:
     tutti_x = [0, dist_XZ, -5, dist_XZ + 5]
     tutti_y = [0, -larg_carreggiata, -larg_carreggiata - 3, 3]
 
-    # Rendering dinamico di tutti i veicoli compilati
+    # Rendering dei veicoli inseriti nei moduli
     for idx, v in enumerate(elenco_veicoli):
         q = v["coords"]
         col_v = colori_v[idx % 5]
@@ -168,3 +168,8 @@ with zona_grafico:
         
         # Geometria della sagoma del veicolo (x, -z)
         punti_g = [(q[0], -q[1]), (q[2], -q[3]), (q[6], -q[7]), (q[4], -q[5])]
+        poly = patches.Polygon(punti_g, closed=True, facecolor=col_v, edgecolor='white', linewidth=1.5, alpha=0.95, zorder=6)
+        ax.add_patch(poly)
+        
+        cx = sum(p[0] for p in punti_g) / 4
+        cy = sum(p[1] for p in punti_g) / 4
