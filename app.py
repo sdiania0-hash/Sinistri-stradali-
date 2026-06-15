@@ -48,7 +48,7 @@ with col_cx:
         st.session_state["lon_x_real"] = 18.118944
         st.success("Coordinate Caposaldo X registrate!")
     lat_x = st.number_input("Latitudine Caposaldo X", value=st.session_state.get("lat_x_real", 40.019572), format="%.6f")
-    lon_x = st.number_input("Longitudine Caposaldo X", value=st.session_state.get("lon_x_saved", 18.118944), format="%.6f")
+    lon_x = st.number_input("Longitudine Caposaldo X", value=st.session_state.get("lon_x_real", 18.118944), format="%.6f")
 
 with col_cz:
     if st.button("📍 Inserisci GPS Attuale -> Mira Z"):
@@ -63,7 +63,7 @@ dist_XZ = st.number_input("Distanza Linea di Base X - Z (metri)", min_value=1.0,
 # --- 3. ANAGRAFICA VEICOLI DINAMICA ---
 st.divider()
 st.subheader("🚗 Anagrafica Veicoli coinvolti nel sinistro")
-num_veicoli = st.selectbox("Quanti veicoli sono coinvolti nell'incidente?", options=[1, 2, 3, 4, 5], index=1, on_change=reset_grafico)
+num_veicoli = st.selectbox("Quanti veicoli sono coinvolti nell'incidente?", options=[2, 3, 4, 5], index=0, on_change=reset_grafico)
 
 default_modelli = ["Citroën C3", "Alfa Romeo 147", "Fiat Panda", "Volkswagen Golf", "Ford Fiesta"]
 default_targhe = ["AA123BB", "CC456DD", "EE789FF", "GG012HH", "JJ345KK"]
@@ -139,7 +139,7 @@ for j in range(num_pedoni):
         if st.button(f"📍 Prendi GPS Attuale per Pedone {j+1}", key=f"btn_gps_p_{j}"):
             st.session_state[f"lat_p_{j}"] = 40.019550
             st.session_state[f"lon_p_{j}"] = 18.119100
-            st.success(f"Posizione GPS Pedone {j+1} registrata!")
+            st.success("Posizione GPS Pedone registrata!")
         lat_p = st.number_input(f"Latitudine GPS Pedone {j+1}", value=st.session_state.get(f"lat_p_{j}", 40.019550), format="%.6f", key=f"lat_p_val_{j}")
         lon_p = st.number_input(f"Longitudine GPS Pedone {j+1}", value=st.session_state.get(f"lon_p_{j}", 18.119100), format="%.6f", key=f"lon_p_val_{j}")
 
@@ -152,17 +152,20 @@ for j in range(num_pedoni):
         
     elenco_pedoni.append({"idx": j+1, "dettaglio": dati_pedone, "lat": lat_p, "lon": lon_p, "x": px_cart, "z": pz_cart})
 
+# --- Misure Dirette di Riscontro ---
+st.divider()
+st.subheader("📏 Misure di Riscontro Dirette (Tra i Veicoli)")
+dist_A1B1 = st.number_input("Misura d'accoppiamento diretta A1 - B1 (m)", value=12.90, format="%.2f")
+dist_A2B3 = st.number_input("Misura d'accoppiamento diretta A2 - B3 (m)", value=11.40, format="%.2f")
+
 
 # --- 5. LOGICA DI RENDERING DEL GRAFICO VETTORIALE ---
 if st.session_state["elaborazione_attiva"]:
     with zona_grafico:
         st.subheader("📊 Schizzo Planimetrico Dinamico Ricostruito")
-        st.success("✨ Elaborazione completata con successo!")
+        st.success("✨ Elaborazione completata!")
         
         fig, ax = plt.subplots(figsize=(15, 9.5), dpi=180)
-        ax.set_facecolor('#465a38')  # Sfondo terreno banchina erba
+        ax.set_facecolor('#465a38')  # Terreno banchina erba
         
-        # Disegno Sede Stradale (Asfalto sotto la linea X-Z)
-        ax.fill_between([-10, dist_XZ + 15], -larg_carreggiata, 0, facecolor='#2f3542', alpha=0.95, zorder=1)
-        ax.axhline(y=0, color='white', linestyle='-', linewidth=2.5, zorder=2)
-        ax.axhline(y=-larg_carreggiata, color='white', linestyle='-', linewidth=2.5, zorder=2)
+        # Sede Stradale asfalto
