@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import io
+from PIL import Image
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
@@ -113,17 +114,20 @@ with col2:
     
     st.pyplot(fig)
 
-    # Scrittura immagine in memoria per il PDF
+    # Conversione corretta dell'immagine in oggetto PIL per evitare il crash [INDEX]
     img_buf = io.BytesIO()
     plt.savefig(img_buf, format='png', bbox_inches='tight', dpi=300)
     img_buf.seek(0)
     plt.close()
+    
+    immagine_pil = Image.open(img_buf) # Forza la lettura come immagine pulita [INDEX]
 
     # Creazione del pacchetto PDF finale
     pdf_buf = io.BytesIO()
     p = canvas.Canvas(pdf_buf, pagesize=landscape(letter))
     
-    p.drawInlineImage(img_buf, 0.25*inch, 0.25*inch, width=10.5*inch, height=8*inch)
+    # Stampa l'immagine convertita nel PDF [INDEX]
+    p.drawInlineImage(immagine_pil, 0.25*inch, 0.25*inch, width=10.5*inch, height=8*inch)
     p.showPage()
     
     # Pagina 2: Verbale descrittivo integrato
@@ -161,3 +165,4 @@ with col2:
         file_name=f"Rilievo_Planimetrico_{localita.replace(' ', '_')}.pdf",
         mime="application/pdf"
     )
+    
