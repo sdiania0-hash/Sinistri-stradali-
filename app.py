@@ -129,7 +129,7 @@ if avvia_elaborazione:
     st.header("📊 Risultati Grafici e Download Report")
     st.success("✨ Elaborazione completata con successo!")
     
-    fig, ax = plt.subplots(figsize=(15, 9.5), dpi=180)
+    fig, ax = plt.subplots(figsize=(14, 9), dpi=150)
     ax.set_facecolor('#465a38')  # Terreno banchina erba
     
     # Sede Stradale asfalto
@@ -166,7 +166,7 @@ if avvia_elaborazione:
         col_v = colori_v[idx % 5]
         col_q = colori_quote[idx % 5]
         
-        # Geometria della sagoma del veicolo (x, -z)
+        # Geometria della sagoma del veicolo (x, -z) estratta correttamente dagli indici dell'array
         punti_g = [(q[0], -q[1]), (q[2], -q[3]), (q[6], -q[7]), (q[4], -q[5])]
         poly = patches.Polygon(punti_g, closed=True, facecolor=col_v, edgecolor='white', linewidth=1.5, alpha=0.95, zorder=6)
         ax.add_patch(poly)
