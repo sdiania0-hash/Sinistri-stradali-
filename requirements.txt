@@ -1,3 +1,5 @@
 numpy
 matplotlib
 reportlab
+folium
+streamlit-folium
