@@ -87,10 +87,10 @@ with col_qB1:
 with col_qB2:
     xb2 = st.number_input("B2 - Distanza X (m)", value=16.80, format="%.2f")
     zb2 = st.number_input("B2 - Quota Z (m)", value=10.55, format="%.2f")
-with col_b3:
+with col_qB3:
     xb3 = st.number_input("B3 - Distanza X (m)", value=18.05, format="%.2f")
     zb3 = st.number_input("B3 - Quota Z (m)", value=7.80, format="%.2f")
-with col_b4:
+with col_qB4:
     xb4 = st.number_input("B4 - Distanza X (m)", value=18.85, format="%.2f")
     zb4 = st.number_input("B4 - Quota Z (m)", value=10.55, format="%.2f")
 foto_pat_B = st.file_uploader("📸 Carica Foto Patente Conducente B", type=["jpg", "png", "jpeg"])
