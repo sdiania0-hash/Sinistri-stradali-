@@ -165,3 +165,54 @@ ax.text((xa2+xb3)/2, (-za2-zb3)/2, f"A2 - B3 = {dist_A2B3:.2f} m", color='#db00d
 
 # Diciture di Provenienza e Frecce stradali
 ax.annotate("Provenienza TAVIANO (Direzione Matino)", xy=(-3, -1), xytext=(2, -1), color='white', weight='bold', fontsize=9, arrowprops=dict(arrowstyle="<-", color="white", linewidth=1.5))
+# Completa il disegno
+
+ax.annotate(
+"Provenienza TAVIANO (Direzione Matino)",
+xy=(-3, -1),
+xytext=(2, -1),
+color='white',
+weight='bold',
+fontsize=9,
+arrowprops=dict(
+arrowstyle="<-",
+color="white",
+linewidth=1.5
+)
+)
+
+ax.set_aspect('equal')
+ax.set_xlim(-10, dist_XZ + 15)
+ax.set_ylim(-15, 8)
+ax.set_title(
+f"Rilievo Planimetrico - {localita}",
+fontsize=14,
+fontweight="bold"
+)
+
+ax.axis("off")
+
+# VISUALIZZA LA MAPPA NELLA PAGINA STREAMLIT
+
+with contenitore_mappa:
+st.pyplot(fig, use_container_width=True)
+
+# CREA PNG
+
+buffer_png = io.BytesIO()
+fig.savefig(
+buffer_png,
+format="png",
+bbox_inches="tight",
+dpi=300
+)
+buffer_png.seek(0)
+
+st.download_button(
+"📸 Scarica rilievo PNG",
+data=buffer_png,
+file_name="rilievo_planimetrico.png",
+mime="image/png"
+)
+
+plt.close(fig)
