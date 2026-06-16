@@ -44,7 +44,7 @@ if not st.session_state["autenticato"]:
     u = st.text_input("Identificativo Nome Utente (ID)", key="sys_user")
     p = st.text_input("Chiave di Accesso (Password)", type="password", key="sys_pass")
 
-        if st.button("Sblocca Terminale Operativo", type="primary", use_container_width=True):
+            if st.button("Sblocca Terminale Operativo", type="primary", use_container_width=True):
         # .strip() rimuove gli spazi automatici della tastiera del telefono
         if u.strip().lower() == UTENTE_CORRETTO and p.strip() == PASSWORD_CORRETTA:
             st.session_state["autenticato"] = True
