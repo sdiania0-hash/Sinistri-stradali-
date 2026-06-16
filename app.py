@@ -118,17 +118,15 @@ def recupera_toponomastica_reale(lat, lon):
 
 st.subheader("🛰️ Posizionamento Hardware Attivo")
 st.markdown("*Premere il quadratino sottostante sul telefono per agganciare istantaneamente i satelliti ed eseguire la decodifica della via:*")
-
 location = streamlit_geolocation()
 posizione_reale = None
 precisione_gps_m = 3.0
 
 if location and location.get("latitude") and location.get("longitude"):
     posizione_reale = [location["latitude"], location["longitude"]]
-    if location.get("accuracy"): 
-        precisione_gps_m = location["accuracy"]
+    if location.get("accuracy"): precisione_gps_m = location["accuracy"]
     st.success(f"📡 Satelliti Agganciati! Lat: {posizione_reale[0]:.6f} | Lon: {posizione_reale[1]:.6f} (Precisione: ±{precisione_gps_m:.1f}m)")
-    if st.session_state["strada_bloccata"] in ["", "SP55 Matino-Taviano", "Località non rilevata"]:
+    if st.session_state["strada_bloccata"] == "" or st.session_state["strada_bloccata"] == "SP55 Matino-Taviano":
         st.session_state["strada_bloccata"] = recupera_toponomastica_reale(posizione_reale[0], posizione_reale[1])
 
 if st.session_state["strada_bloccata"] == "":
@@ -136,7 +134,7 @@ if st.session_state["strada_bloccata"] == "":
 
 localita = st.text_input("Località / Via Rilevata (Accertamento Satellitare)", value=st.session_state["strada_bloccata"])
 data_ora = st.text_input("Data e Ora del Rilievo", value="15/06/2026 | ORE: 06:50")
-operatori_input = st.text_input("Operatori di Polizia Stradale Procedenti", value="Ass. Capo Rossi, Ag. Scelto Bianchi")
+operatori_input = st.text_input("Operatori di Polizia Stradale", value="Ass. Capo Rossi, Ag. Scelti Bianchi")
 
 url_maps = f"https://google.com{st.session_state['lat_x_real']},{st.session_state['lon_x_real']}"
 st.link_button("🌐 Apri Localizzazione su Google Maps (Ispezione Corsie e Curve)", url_maps, use_container_width=True)
@@ -172,8 +170,7 @@ with col_cz:
     lon_z = st.number_input("Longitudine Mira Z", value=st.session_state["lon_z_real"], format="%.6f")
 
 dist_calcolata = calcola_distanza_utm(lat_x, lon_x, lat_z, lon_z)
-if dist_calcolata < 0.1: 
-    dist_calcolata = 25.05
+if dist_calcolata < 0.1: dist_calcolata = 25.05
 dist_XZ = st.number_input("Distanza Linea di Base X - Z (metri)", min_value=1.0, value=float(round(dist_calcolata, 2)))
 st.header("2. Censimento Unità Coinvolte e Rilievi Metrici")
 
@@ -181,7 +178,7 @@ num_veicoli = st.selectbox("Numero totale veicoli da censire", options=[1, 2, 3,
 
 elenco_veicoli = []
 for k in range(num_veicoli):
-    let = chr(65 + k)  # Genera A, B, C...
+    let = chr(65 + k)  # Genera A, B, C, D...
     st.markdown(f"### 🚗 Unità Veicolare {let}")
     
     col_v1, col_v2 = st.columns(2)
@@ -197,24 +194,25 @@ for k in range(num_veicoli):
         tipo_forma = st.radio(f"Rappresentazione Grafica {let}", options=["Rettangolo", "Punto"], key=f"form_{k}")
     
     st.markdown(f"#### 📐 Rilievi Metrici (Metodo delle Coordinate Ortogonali) per Veicolo {let}")
+    st.write("Inserire le distanze misurate partendo dal Caposaldo X (0,0) lungo la linea di base X-Z.")
     
     col_m1, col_m2 = st.columns(2)
     with col_m1:
-        vx1 = st.number_input(f"Punto A (Anteriore) - Distanza Asse X (m) - {let}", value=5.2 + (k * 6), key=f"vx1_{k}")
-        vz1_in = st.number_input(f"Punto A (Anteriore) - Scostamento Asse Z (m) - {let}", value=1.8, key=f"vz1_{k}")
+        vx1 = st.number_input(f"Punto A (Anteriore) - Distanza Asse X (m) {let}", value=5.2 + (k * 6), key=f"vx1_{k}")
+        vz1_in = st.number_input(f"Punto A (Anteriore) - Scostamento Asse Z (m) {let}", value=1.8, key=f"vz1_{k}")
         vlato1 = st.radio(f"Lato Punto A {let}", ["Destra", "Sinistra '-'"], key=f"vlat1_{k}")
         vz1 = -vz1_in if "Sinistra" in vlato1 else vz1_in
         
     with col_m2:
-        vx2 = st.number_input(f"Punto B (Posteriore) - Distanza Asse X (m) - {let}", value=2.1 + (k * 6), key=f"vx2_{k}")
-        vz2_in = st.number_input(f"Punto B (Posteriore) - Scostamento Asse Z (m) - {let}", value=1.5, key=f"vz2_{k}")
+        vx2 = st.number_input(f"Punto B (Posteriore) - Distanza Asse X (m) {let}", value=2.1 + (k * 6), key=f"vx2_{k}")
+        vz2_in = st.number_input(f"Punto B (Posteriore) - Scostamento Asse Z (m) {let}", value=1.5, key=f"vz2_{k}")
         vlato2 = st.radio(f"Lato Punto B {let}", ["Destra", "Sinistra '-'"], key=f"vlat2_{k}")
         vz2 = -vz2_in if "Sinistra" in vlato2 else vz2_in
 
     punti_v = np.array([[vx1, vz1], [vx2, vz2]])
 
-    # 📁 Caricamento Documenti del Veicolo
-    st.markdown("##### 📁 Documenti del veicolo")
+    # 📁 Caricamento Documenti e Motore OCR Veicolo
+    st.markdown("##### 📁 Caricamento Documenti Conducente e Veicolo (OCR)")
     doc_patente = st.file_uploader(f"Patente conducente {let}", type=["jpg", "jpeg", "png"], key=f"pat_{k}")
     doc_carta = st.file_uploader(f"Carta circolazione {let}", type=["jpg", "jpeg", "png"], key=f"lib_{k}")
     doc_ass = st.file_uploader(f"Assicurazione RCA {let}", type=["jpg", "jpeg", "png"], key=f"ass_{k}")
@@ -223,7 +221,7 @@ for k in range(num_veicoli):
         st.session_state[f"ocr_veicolo_{k}"] = {"patente": "", "carta": "", "assicurazione": "", "estratto": {}}
 
     if st.button(f"🔎 Leggi documenti Veicolo {let}", key=f"ocr_btn_{k}", use_container_width=True):
-        with st.spinner("Esecuzione OCR in corso..."):
+        with st.spinner("Estrazione testo in corso..."):
             testo_pat = estrai_testo_ocr(doc_patente)
             testo_lib = estrai_testo_ocr(doc_carta)
             testo_ass = estrai_testo_ocr(doc_ass)
@@ -236,27 +234,32 @@ for k in range(num_veicoli):
             }
 
     ocr_v = st.session_state[f"ocr_veicolo_{k}"]
-    col_ocr_v = st.columns(3)
-    with col_ocr_v[0]:
+    
+    col_ocr_txt = st.columns(3)
+    with col_ocr_txt[0]:
         st.text_area(f"Testo OCR patente {let}", value=ocr_v["patente"], height=100, key=f"ocr_pat_txt_{k}")
-    with col_ocr_v[1]:
+    with col_ocr_txt[1]:
         st.text_area(f"Testo OCR carta circolazione {let}", value=ocr_v["carta"], height=100, key=f"ocr_lib_txt_{k}")
-    with col_ocr_v[2]:
+    with col_ocr_txt[2]:
         st.text_area(f"Testo OCR assicurazione {let}", value=ocr_v["assicurazione"], height=100, key=f"ocr_ass_txt_{k}")
-    st.write("**Dati estratti automaticamente:**")
+        
+    st.write("**Dati rilevati da analisi semantica:**")
     st.json(ocr_v["estratto"])
 
-    # 🩹 Conducente Stato Sanitario
-    flag_cond_ferito = st.checkbox(f"🩹 Il Conducente {let} ha riportato lesioni (Ferito)", key=f"c_fer_{k}")
-    col_s1, col_s2 = st.columns(2)
-    with col_s1:
+    # 🩹 Stato Sanitario Conducente
+    st.markdown("##### 🩹 Stato del Conducente")
+    col_cond_s1, col_cond_s2 = st.columns(2)
+    with col_cond_s1:
+        flag_cond_ferito = st.checkbox(f"Il Conducente {let} ha riportato lesioni (Ferito)", key=f"c_fer_{k}")
         prognosi_cond = st.number_input(f"Prognosi Conducente {let} (giorni)", min_value=0, max_value=365, value=0, key=f"c_prog_{k}")
-    with col_s2:
+    with col_cond_s2:
         ospedale_cond = st.text_input(f"Ospedale trasporto Conducente {let}", value="Vito Fazzi - Lecce" if flag_cond_ferito else "Nessuno", key=f"osp_c_{k}")
 
-    # 👥 Passeggeri
-    num_pass = st.number_input(f"Passeggeri trasportati sul Veicolo {let}", min_value=0, max_value=10, value=0, key=f"n_p_{k}")
+    # 👥 Passeggeri del Veicolo
+    st.markdown(f"##### 👥 Passeggeri Trasportati (Veicolo {let})")
+    num_pass = st.number_input(f"Numero passeggeri su Veicolo {let}", min_value=0, max_value=10, value=0, key=f"n_p_{k}")
     elenco_pass_v = []
+    
     for p in range(num_pass):
         st.write(f"↳ *Passeggero {p+1} (Mezzo {let})*")
         col_p1, col_p2 = st.columns(2)
@@ -264,7 +267,7 @@ for k in range(num_veicoli):
             foto_doc = st.file_uploader(f"📸 Documento Pass. {p+1}", type=["jpg", "png", "jpeg"], key=f"dc_{k}_{p}")
             f_p = st.checkbox(f"🩹 Ferito", key=f"p_fer_{k}_{p}")
         with col_p2:
-            o_p = st.text_input(f"Ospedale trasporto Pass. {p+1}", value="Vito Fazzi" if f_p else "Nessuno", key=f"osp_p_{k}_{p}")
+            o_p = st.text_input(f"Ospedale trasporto Pass. {p+1}", value="Vito Fazzi - Lecce" if f_p else "Nessuno", key=f"osp_p_{k}_{p}")
             prog_p = st.number_input(f"Prognosi (giorni) Pass. {p+1}", min_value=0, max_value=365, value=0, key=f"p_prog_{k}_{p}")
 
         if f"ocr_pass_{k}_{p}" not in st.session_state:
@@ -289,6 +292,7 @@ for k in range(num_veicoli):
         "lat": lat_v,
         "lon": lon_v,
         "punti": punti_v,
+        "misure_base": [vx1, vz1],
         "ocr": ocr_v,
         "passeggeri": elenco_pass_v,
         "stato": stato_mezzo,
@@ -301,23 +305,24 @@ for k in range(num_veicoli):
     })
     st.divider()
 
-# 🚶 Sezione Pedoni / Ostacoli Fissi
+# 🚶 Sezione Pedoni e Ostacoli Fissi
 st.header("3. Censimento Pedoni / Ostacoli Fissi")
 num_pedoni = st.selectbox("Quanti pedoni o ostacoli fissi vuoi registrare?", options=[0, 1, 2, 3, 4, 5], index=0)
 elenco_pedoni = []
+
 for kp in range(num_pedoni):
     st.write(f"🔹 **Pedone / Ostacolo {kp + 1}**")
     col_pe1, col_pe2 = st.columns(2)
     with col_pe1:
         ped_nome = st.text_input(f"Nome Pedone / Tipo Ostacolo {kp+1}", value=f"Pedone {kp+1}", key=f"p_nom_{kp}")
         ped_doc = st.file_uploader(f"📸 Documento Pedone {kp+1}", type=["jpg", "png", "jpeg"], key=f"ped_doc_{kp}")
-        ped_ferito = st.checkbox(f"🩹 Ferito", value=False, key=f"p_fr_{kp}")
+        ped_ferito = st.checkbox(f"🩹 Ferito / Danneggiato", value=False, key=f"p_fr_{kp}")
     with col_pe2:
         ped_prog = st.number_input(f"Prognosi (giorni) Pedone {kp+1}", min_value=0, max_value=365, value=0, key=f"p_prog_{kp}")
-        ped_osp = st.text_input(f"Ospedale trasporto Pedone {kp+1}", value="Vito Fazzi" if ped_ferito else "Nessuno", key=f"p_osp_{kp}")
-        ped_x = st.number_input(f"Distanza Asse X (m) Pedone {kp+1}", value=14.0 + kp, key=f"p_x_{kp}")
-        ped_z_in = st.number_input(f"Scostamento Asse Z (m) Pedone {kp+1}", value=3.2, key=f"p_z_{kp}")
-        ped_lato = st.radio(f"Lato Pedone {kp+1}", ["Destra", "Sinistra '-'"], key=f"p_lt_{kp}")
+        ped_osp = st.text_input(f"Ospedale trasporto Pedone {kp+1}", value="Vito Fazzi - Lecce" if ped_ferito else "Nessuno", key=f"p_osp_{kp}")
+        ped_x = st.number_input(f"Distanza Asse X (m) Ostacolo {kp+1}", value=10.0 + (kp * 2), key=f"p_x_{kp}")
+        ped_z_in = st.number_input(f"Scostamento Asse Z (m) Ostacolo {kp+1}", value=2.5, key=f"p_z_{kp}")
+        ped_lato = st.radio(f"Lato Ostacolo {kp+1}", ["Destra", "Sinistra '-'"], key=f"p_lt_{kp}")
         ped_z = -ped_z_in if "Sinistra" in ped_lato else ped_z_in
 
     if f"ocr_ped_{kp}" not in st.session_state:
@@ -394,20 +399,24 @@ DATI STRUMENTALI E CAPISALDI DI RIFERIMENTO:
 CENSIMENTO DETTAGLIATO UNITÀ COINVOLTE, OCCUPANTI E STATO SANITARIO:
 """
 
+# Ciclo di estrazione dati per ciascun veicolo censito
 for v in elenco_veicoli:
+    p_ant = v["punti"][0]
+    p_post = v["punti"][1]
     testo_relazione += f"\n▶️ VEICOLO {v['let']} ({v['modello'].upper()})\n"
     testo_relazione += f"  - Targa identificativa: {v['targa']}\n"
     testo_relazione += f"  - Categoria strutturale: {v['categoria']}\n"
     testo_relazione += f"  - Posizionamento GPS Finale: Lat: {v['lat']:.6f}, Lon: {v['lon']:.6f}\n"
     testo_relazione += f"  - Stato post-urto: {v['stato']}\n"
     testo_relazione += f"  - Rilievo Metrico Cartesiano (Metodo Ortogonale):\n"
-    testo_relazione += f"    * Punto A (Anteriore): X = {v['punti'][0,0]:.2f} m, Z = {v['punti'][0,1]:.2f} m\n"
-    testo_relazione += f"    * Punto B (Posteriore): X = {v['punti'][1,0]:.2f} m, Z = {v['punti'][1,1]:.2f} m\n"
+    testo_relazione += f"    * Punto A (Anteriore): X = {p_ant[0]:.2f} m, Z = {p_ant[1]:.2f} m\n"
+    testo_relazione += f"    * Punto B (Posteriore): X = {p_post[0]:.2f} m, Z = {p_post[1]:.2f} m\n"
     testo_relazione += f"  - Conducente: Riferito in stato di lesioni? {'SÌ' if v['ferito'] else 'NO'}\n"
     testo_relazione += f"    * Prognosi provvisoria: {v['prognosi']} giorni\n"
     testo_relazione += f"    * Presidio Ospedaliero di destinazione: {v['ospedale']}\n"
     testo_relazione += f"  - Dati OCR estratti (Patente/Carta/RCA): {v['estratto_auto']}\n"
     
+    # Sotto-ciclo per stampare correttamente i passeggeri del veicolo corrente
     if v["passeggeri"]:
         testo_relazione += f"  - Passeggeri registrati a bordo ({len(v['passeggeri'])}):\n"
         for p in v["passeggeri"]:
@@ -415,6 +424,7 @@ for v in elenco_veicoli:
     else:
         testo_relazione += "  - Passeggeri registrati a bordo: Nessuno\n"
 
+# Chiusura del blocco e avvio del ciclo dedicato ai pedoni ed ostacoli fissi
 if elenco_pedoni:
     testo_relazione += "\n▶️ PEDONI / OSTACOLI FISSI REGISTRATI:\n"
     for idx, ped in enumerate(elenco_pedoni):
@@ -436,4 +446,4 @@ st.download_button(
     file_name=f"RELAZIONE_RILIEVO_{data_ora.replace('/', '-').replace(' | ', '_').replace(':', '')}.txt",
     mime="text/plain",
     use_container_width=True
-)
+    )
