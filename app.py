@@ -161,7 +161,7 @@ def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, la
     ax.add_patch(asfalto)
 
     # Linee continue di margine della carreggiata (Normativa Codice della Strada)
-            ax.plot([-15, 45], [0, 0], color="white", linewidth=3.5, zorder=2)
+    ax.plot([-15, 45], [0, 0], color="white", linewidth=3.5, zorder=2)
 
 
     ax.plot([-15, 45], [larg_c, larg_c], color="white", linewidth=3.5, zorder=2)
