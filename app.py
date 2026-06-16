@@ -10,9 +10,7 @@ st.set_page_config(page_title="Terminale Rilievo Planimetrico Forense", layout="
 st.title("🚓 Terminale di Rilievo Planimetrico Universale GPS")
 
 st.warning("⚠️ **VERSIONE BETA IN VIA DI SVILUPPO** — Questo software è un prototipo industriale per il rilievo stradale. I calcoli geometrici e le acquisizioni hardware devono essere verificati dall'operatore procedente prima dell'inserimento negli atti ufficiali.")
-st.caption("© 2026 Tutti i diritti riservati. Proprietà intellettuale e codice sorgente depositati. Vietata la riproduzione e la ridistribuzione non autorizzata.")
-
-st.info("💡 Interfaccia professionale per il rilievo dei sinistri. Permette la scelta del metodo di misura, l'acquisizione GPS e la generazione istantanea della relazione tecnica d'ufficio.")
+st.caption("© 2026 Tutti i diritti riservati. Proprietà intellettuale e codice sorgente depositati.")
 
 contenitore_mappa = st.empty()
 
@@ -129,25 +127,25 @@ for i in range(num_veicoli):
             vx2 = st.number_input(f"Ruota Post. Sx X (m) [{let}2]", value=default_inputs[i % 2]["xp"] if i < len(default_inputs) else 12.0, key=f"{let}_x2_r")
             vz2 = st.number_input(f"Ruota Post. Sx Z (m) [{let}2]", value=default_inputs[i % 2]["zp"] if i < len(default_inputs) else 2.0, key=f"{let}_z2_r")
         punti_v = calcola_rettangolo_veicolo(vx1, vz1, vx2, vz2, larg, lung)
-        tipo_misure = f"Metodo Rapido: R1=({vx1}m, {vz1}m), R2=({vx2}m, {vz2}m) su sagoma {lung}x{larg}m"
+        tipo_misure = f"Metodo Rapido: R1=({vx1}m, {vz1}m), R2=({vx2}m, {vz2}m)"
     else:
         col_q1, col_q2, col_q3, col_q4 = st.columns(4)
         with col_q1:
             vx1 = st.number_input(f"{let}1-X (Ant Sx)", value=16.60 if i==0 else 16.30, key=f"{let}_x1_f")
             vz1 = st.number_input(f"{let}1-Z", value=2.50 if i==0 else 7.80, key=f"{let}_z1_f")
         with col_q2:
-            vx2 = st.number_input(f"{let}2-X (Ant Dx)", value=18.20 if i==0 else 16.80, key=f"{let}_x2_f")
+            vx2 = st.number_input(f"{let}2-X", value=18.20 if i==0 else 16.80, key=f"{let}_x2_f")
             vz2 = st.number_input(f"{let}2-Z", value=2.70 if i==0 else 10.55, key=f"{let}_z2_f")
         with col_q3:
-            vx3 = st.number_input(f"{let}3-X (Post Dx)", value=19.00 if i==0 else 18.85, key=f"{let}_x3_f")
+            vx3 = st.number_input(f"{let}3-X", value=19.00 if i==0 else 18.85, key=f"{let}_x3_f")
             vz3 = st.number_input(f"{let}3-Z", value=0.70 if i==0 else 10.55, key=f"{let}_z3_f")
         with col_q4:
-            vx4 = st.number_input(f"{let}4-X (Post Sx)", value=16.80 if i==0 else 18.05, key=f"{let}_x4_f")
+            vx4 = st.number_input(f"{let}4-X", value=16.80 if i==0 else 18.05, key=f"{let}_x4_f")
             vz4 = st.number_input(f"{let}4-Z", value=0.50 if i==0 else 7.80, key=f"{let}_z4_f")
         punti_v = np.array([[vx1, vz1], [vx2, vz2], [vx3, vz3], [vx4, vz4]])
-        tipo_misure = f"Metodo Avanzato a 4 spigoli inseriti manualmente."
+        tipo_misure = "Metodo Avanzato a 4 spigoli completi."
 
-    elenco_veicoli.append({"let": let, "modello": modello, "targa": targa, "lat": lat_v, "lon": lon_v, "punti": punti_v, "descr_misure": tipo_misure, "misure_base": [vx1, vz1, vx2, vz2]})
+    elenco_veicoli.append({"let": let, "modello": modello, "targa": targa, "lat": lat_v, "lon": lon_v, "punti": punti_v, "descr_misure": tipo_misure, "misure_base": [vx1, vz1]})
     st.divider()
 st.subheader("💥 Rilievo Tracce Forensi e Punto d'Urto")
 col_pu1, col_pu2 = st.columns(2)
@@ -165,7 +163,7 @@ dist_A2B3 = st.number_input("Distanza diretta d'intersezione A2 - B3 (m)", value
 
 def genera_tavola_grafica():
     fig = plt.figure(figsize=(16, 10), dpi=150)
-    grid = plt.GridSpec(2, 1, height_ratios=[4, 1], hspace=0.25)
+    grid = plt.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.25)
     ax_mappa = fig.add_subplot(grid[0])
     ax_mappa.set_facecolor('#465a38')
     ax_mappa.fill_between([-15, dist_XZ + 20], -larg_carreggiata, 0, facecolor='#2f3542', alpha=0.95, zorder=1)
@@ -173,45 +171,36 @@ def genera_tavola_grafica():
     ax_mappa.axhline(y=-larg_carreggiata, color='white', linestyle='-', linewidth=3, zorder=2)
     if num_corsie > 1:
         spazio_corsia = larg_carreggiata / num_corsie
-        for c in range(1, num_corsie):
-            quota_linea = - (spazio_corsia * c)
-            ax_mappa.axhline(y=quota_linea, color='white', linestyle='--', linewidth=1.5, alpha=0.8, zorder=2)
-    if "Curva" in andamento_strada:
-        ax_mappa.text((dist_XZ/2), 2.2, f"⚠️ ASSE STRADALE RETTIFICATO - GEOMETRIA IN {andamento_strada.upper()}", color='darkred', weight='bold', ha='center', fontsize=9)
+        for c in range(1, num_corsie): ax_mappa.axhline(y=-(spazio_corsia * c), color='white', linestyle='--', linewidth=1.5, alpha=0.8, zorder=2)
+    if "Curva" in andamento_strada: ax_mappa.text((dist_XZ/2), 2.2, f"⚠️ GEOMETRIA IN {andamento_strada.upper()}", color='darkred', weight='bold', ha='center', fontsize=9)
     ax_mappa.scatter([0, dist_XZ], [0, 0], color='#e67e22', s=250, marker='X', edgecolor='white', zorder=10)
-    ax_mappa.text(-0.5, 0.5, "Caposaldo X\n(Civico)", color='black', fontsize=9, fontweight='bold', ha='right')
-    ax_mappa.text(dist_XZ + 0.5, 0.5, "Mira Z\n(Palo)", color='black', fontsize=9, fontweight='bold', ha='left')
     ax_mappa.plot([0, dist_XZ], [0, 0], color='#e67e22', linestyle='-', linewidth=2, zorder=3)
     ax_mappa.scatter([pu_x], [-pu_z], color='red', s=300, marker='*', edgecolor='white', linewidth=1.5, zorder=8)
-    ax_mappa.text(pu_x + 0.5, -pu_z, "P.U.", color='red', weight='bold', fontsize=10, zorder=8)
     ax_mappa.plot([frenata_x, pu_x], [-frenata_z, -pu_z], color='#f1c40f', linestyle='--', linewidth=3, zorder=4)
-    ax_mappa.text(frenata_x, -frenata_z + 0.3, "Traccia Frenata", color='#f1c40f', fontsize=8, weight='bold')
-    ax_mappa.text(-3, 2.0, f"🧭 Orientamento: {orientamento_nord}", color='black', weight='bold', fontsize=9, bbox=dict(facecolor='white', alpha=0.8, pad=2))
+    ax_mappa.text(-3, 2.0, f"🧭 Nord: {orientamento_nord}", color='black', weight='bold', fontsize=9, bbox=dict(facecolor='white', alpha=0.8, pad=2))
+    
     colori_v = ['#1b9cfc', '#718093', '#2ecc71']
     for idx, v in enumerate(elenco_veicoli):
         pts = v["punti"].copy()
         pts[:, 1] = -pts[:, 1]
         col = colori_v[idx % len(colori_v)]
-        poly = patches.Polygon(pts, closed=True, facecolor=col, edgecolor='black', linewidth=2, zorder=5)
-        ax_mappa.add_patch(poly)
-        cx, cz = np.mean(pts[:, 0]), np.mean(pts[:, 1])
-        ax_mappa.text(cx, cz, f"Veicolo {v['let']}\n({v['modello']})", color='white', fontsize=9, weight='bold', ha='center', va='center', zorder=6)
+        ax_mappa.add_patch(patches.Polygon(pts, closed=True, facecolor=col, edgecolor='black', linewidth=2, zorder=5))
+        ax_mappa.text(np.mean(pts[:, 0]), np.mean(pts[:, 1]), f"Veicolo {v['let']}", color='white', fontsize=9, weight='bold', ha='center', va='center', zorder=6)
         mb = v["misure_base"]
-        ax_mappa.plot([mb, mb], [0, -mb], color=col, linestyle=':', alpha=0.7)
-        ax_mappa.plot([mb, mb], [0, -mb], color=col, linestyle=':', alpha=0.7)
+        ax_mappa.plot([mb[0], mb[0]], [0, -mb[1]], color=col, linestyle=':', alpha=0.7)
+
     ax_mappa.grid(True, color='#ffffff', linestyle='--', alpha=0.15)
     ax_mappa.set_xlim(-5, dist_XZ + 10)
     ax_mappa.set_ylim(-larg_carreggiata - 4, 3)
     ax_mappa.set_aspect('equal')
-    ax_mappa.set_title("SCHIZZO PLANIMETRICO DI RILIEVO - TAVOLA GRAFICA COMPLETA", fontsize=12, weight='bold')
+    
     ax_info = fig.add_subplot(grid[1])
     ax_info.axis('off')
-    cartiglio = f"CARTIGLIO DI RILIEVO PROCEDENTE\n• Comando: {stazione}\n• Località: {localita}\n• Data/Ora: {data_ora}\n• Tratto: {andamento_strada} | Orientazione: {orientamento_nord}\n• Operatori: {operanti}"
+    cartiglio = f"CARTIGLIO DI RILIEVO\n• Comando: {stazione}\n• Località: {localita}\n• Data/Ora: {data_ora}\n• Sede: {andamento_strada} | Nord: {orientamento_nord}\n• Personale: {operanti}"
     ax_info.text(0.01, 0.95, cartiglio, fontsize=8.5, bbox=dict(facecolor='white', edgecolor='#cccccc', boxstyle='round,pad=0.8'), va='top')
-    legenda_legge = "LEGENDA E PARAMETRI REGISTRATI:\n"
-    for v in elenco_veicoli: legenda_legge += f"• Veicolo {v['let']}: {v['modello']} ({v['targa']}) | GPS: {v['lat']:.5f}, {v['lon']:.5f}\n"
-    legenda_legge += f"• Evidenze: Punto d'Urto (P.U.) a X={pu_x}m, Z={pu_z}m | Traccia Frenata inizio X={frenata_x}m\n• Riscontri: A1-B1 = {dist_A1B1}m | A2-B3 = {dist_A2B3}m"
+    legenda_legge = f"LEGENDA REGISTRATA:\n• Evidenze: Urto (P.U.) X={pu_x}m, Z={pu_z}m | Traccia Frenata inizio X={frenata_x}m\n• Riscontri: A1-B1 = {dist_A1B1}m | A2-B3 = {dist_A2B3}m"
     ax_info.text(0.48, 0.95, legenda_legge, fontsize=8.5, bbox=dict(facecolor='#f8f9fa', edgecolor='#e67e22', boxstyle='round,pad=0.8'), va='top')
+    
     buf = io.BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight')
     buf.seek(0)
@@ -228,25 +217,15 @@ st.header("📝 2. Relazione Sintetica dello Stato dei Luoghi")
 testo_relazione = f"""RELAZIONE SINTETICA DI RILIEVO STRADALE
 Ufficio Procedente: {stazione}\nOperatori sul posto: {operanti}\nLocalità e data: {localita} | Data e Ora: {data_ora}
 
-In data e ora sopra indicate, il personale scrivente è intervenuto nel luogo descritto a causa di un sinistro stradale. I luoghi si presentavano come segue: {note_luogo}. La sede stradale presenta una configurazione in tratto {andamento_strada.upper()} con orientamento cardinale d'allineamento verso {orientamento_nord.upper()}. La carreggiata misura una larghezza complessiva di {larg_carreggiata} metri ed è suddivisa in {num_corsie} corsie di marcia.
+In data e ora sopra indicate, il personale scrivente è intervenuto nel luogo descritto a causa di un sinistro stradale. I luoghi si presentavano come segue: {note_luogo}. La sede stradale presenta una configurazione in tratto {andamento_strada.upper()} con orientamento cardinale verso {orientamento_nord.upper()}. La carreggiata misura una larghezza complessiva di {larg_carreggiata} metri ed è suddivisa in {num_corsie} corsie di marcia.
 
-Per la determinazione geometrico-topografica dello stato delle cose, si è proceduto a istituire una linea di base d'allineamento legata a due capisaldi geografici stabili:
-- Caposaldo X (Origine degli assi cartesiani 0.00): Lat: {lat_x:.6f}, Lon: {lon_x:.6f}
-- Mira Z (Fine della linea di orientamento): Lat: {lat_z:.6f}, Lon: {lon_z:.6f}
-Distanza metrica rilevata sulla linea di base X-Z: {dist_XZ} metri.
+Linea di base X-Z stabilita sui capisaldi stabili: dist. metrica {dist_XZ} metri.
+Punto d'Urto presunto (P.U.) individuato alle quote cartesiane X = {pu_x:.2f} m e Z = {pu_z:.2f} m, preceduto da traccia di frenata da quota X = {frenata_x:.2f} m.\n"""
 
-Nel corso dei rilievi è stato individuato il Punto d'Urto presunto (P.U.) individuato alle quote cartesiane X = {pu_x:.2f} m e Z = {pu_z:.2f} m, preceduto da una traccia di frenata/scarrocciamento gommata sull'asfalto avente inizio alla quota X = {frenata_x:.2f} m e Z = {frenata_z:.2f} m.
+for v in elenco_veicoli: testo_relazione += f"- Veicolo {v['let']}: {v['modello']}, targa {v['targa']}. GPS: {v['lat']:.6f}, {v['lon']:.6f}. {v['descr_misure']}.\n"
+testo_relazione += f"\nMisure dirette d'intersezione incrociata: A1-B1 = {dist_A1B1} m | A2-B3 = {dist_A2B3} m."
 
-Sulla scorta di tale allineamento, sono state cristallizzate le posizioni statiche di quiete dei seguenti veicoli coinvolti:\n"""
+st.text_area("Copia il testo della relazione per il verbale d'ufficio:", value=testo_relazione, height=300)
 
-for v in elenco_veicoli: testo_relazione += f"- Veicolo {v['let']}: {v['modello']}, targa {v['targa']}. Posizionamento GPS registrato: {v['lat']:.6f}, {v['lon']:.6f}. {v['descr_misure']}.\n"
-
-testo_relazione += f"\nA riscontro incrociato delle misure di rilievo ortogonale e a garanzia della precisione millimetrica della tavola grafica, sono state misurate le seguenti distanze dirette di intersecazione tra i mezzi sul campo:\n"
-testo_relazione += f"- Distanza diretta registrata tra lo spigolo A1 ed il punto B1: {dist_A1B1} metri.\n"
-testo_relazione += f"- Distanza diretta registrata tra lo spigolo A2 ed il punto B3: {dist_A2B3} metri.\n"
-testo_relazione += f"\nI rilievi si sono conclusi regolarmente, con successivo sgombero della carreggiata per il ripristino della viabilità."
-
-st.text_area("Copia il testo della relazione per il verbale d'ufficio:", value=testo_relazione, height=350)
-
-if st.button("🏗️ RIGENERA INTERO ELABORATO E MAPPA", type="primary", use_container_width=True): st.success("Planimetria, cartiglio e relazione scritta aggiornati in base ai nuovi parametri inseriti!")
+if st.button("🏗️ RIGENERA INTERO ELABORATO E MAPPA", type="primary", use_container_width=True): st.success("Planimetria, cartiglio e relazione scritta aggiornati con successo!")
     
