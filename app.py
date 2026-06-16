@@ -9,7 +9,7 @@ from streamlit_js_eval import streamlit_js_eval
 st.set_page_config(page_title="Terminale Rilievo Planimetrico Forense", layout="centered")
 st.title("🚓 Terminale di Rilievo Planimetrico Universale GPS")
 
-st.warning("⚠️ **VERSIONE BETA IN VIA DI SVILUPPO** — Questo software è un prototipo sperimentale per il rilievo stradale. I calcoli geometrici e le acquisizioni hardware devono essere verificati dall'operatore procedente prima dell'inserimento negli atti ufficiali.")
+st.warning("⚠️ **VERSIONE BETA IN VIA DI SVILUPPO** — Questo software è un prototipo industriale per il rilievo stradale. I calcoli geometrici e le acquisizioni hardware devono essere verificati dall'operatore procedente prima dell'inserimento negli atti ufficiali.")
 st.caption("© 2026 Tutti i diritti riservati. Proprietà intellettuale e codice sorgente depositati. Vietata la riproduzione e la ridistribuzione non autorizzata.")
 
 st.info("💡 Interfaccia professionale per il rilievo dei sinistri. Permette la scelta del metodo di misura, l'acquisizione GPS e la generazione istantanea della relazione tecnica d'ufficio.")
@@ -66,7 +66,7 @@ posizione_reale = None
 
 if ottieni_gps:
     posizione_reale = streamlit_js_eval(data_string="navigator.geolocation.getCurrentPosition(success => { return [success.coords.latitude, success.coords.longitude]; }, error => { return null; })", key="gps_device_live")
-    if i == 0 or (posizione_reale and len(posizione_reale) == 2): st.success("📡 Satelliti Agganciati! Posizione registrata correttamente.")
+    if posizione_reale and len(posizione_reale) == 2: st.success("📡 Satelliti Agganciati! Posizione registrata correttamente.")
     else: st.warning("Ricerca del fix GPS in corso... Assicurati di aver concesso i permessi.")
 
 st.markdown("##### 🗺️ Ispezione Stradale Google Maps")
@@ -94,7 +94,7 @@ dist_XZ = st.number_input("Distanza Linea di Base X - Z (metri)", min_value=1.0,
 
 st.divider()
 st.subheader("🚗 Anagrafica e Rilievo Veicoli")
-num_veicoli = st.selectbox("Quanti veicoli sono coinvolti?", options=, index=1)
+num_veicoli = st.selectbox("Quanti veicoli sono coinvolti?", options=[1, 2, 3, 4, 5], index=1)
 
 default_modelli = ["Citroën C3", "Alfa Romeo 147", "Fiat Panda"]
 default_targhe = ["AA123BB", "CC456DD", "EE789FF"]
@@ -148,7 +148,7 @@ for i in range(num_veicoli):
         tipo_misure = f"Metodo Avanzato a 4 spigoli inseriti manualmente."
 
     elenco_veicoli.append({"let": let, "modello": modello, "targa": targa, "lat": lat_v, "lon": lon_v, "punti": punti_v, "descr_misure": tipo_misure, "misure_base": [vx1, vz1, vx2, vz2]})
-st.divider()
+    st.divider()
 st.subheader("💥 Rilievo Tracce Forensi e Punto d'Urto")
 col_pu1, col_pu2 = st.columns(2)
 with col_pu1:
@@ -165,7 +165,7 @@ dist_A2B3 = st.number_input("Distanza diretta d'intersezione A2 - B3 (m)", value
 
 def genera_tavola_grafica():
     fig = plt.figure(figsize=(16, 10), dpi=150)
-    grid = plt.GridSpec(2, 1, height_ratios=[7, 3], hspace=0.25)
+    grid = plt.GridSpec(2, 1, height_ratios=[4, 1], hspace=0.25)
     ax_mappa = fig.add_subplot(grid[0])
     ax_mappa.set_facecolor('#465a38')
     ax_mappa.fill_between([-15, dist_XZ + 20], -larg_carreggiata, 0, facecolor='#2f3542', alpha=0.95, zorder=1)
@@ -197,8 +197,8 @@ def genera_tavola_grafica():
         cx, cz = np.mean(pts[:, 0]), np.mean(pts[:, 1])
         ax_mappa.text(cx, cz, f"Veicolo {v['let']}\n({v['modello']})", color='white', fontsize=9, weight='bold', ha='center', va='center', zorder=6)
         mb = v["misure_base"]
-        ax_mappa.plot([mb[0], mb[0]], [0, -mb[1]], color=col, linestyle=':', alpha=0.7)
-        ax_mappa.plot([mb[2], mb[2]], [0, -mb[3]], color=col, linestyle=':', alpha=0.7)
+        ax_mappa.plot([mb, mb], [0, -mb], color=col, linestyle=':', alpha=0.7)
+        ax_mappa.plot([mb, mb], [0, -mb], color=col, linestyle=':', alpha=0.7)
     ax_mappa.grid(True, color='#ffffff', linestyle='--', alpha=0.15)
     ax_mappa.set_xlim(-5, dist_XZ + 10)
     ax_mappa.set_ylim(-larg_carreggiata - 4, 3)
