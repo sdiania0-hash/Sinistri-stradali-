@@ -34,7 +34,7 @@ for k, v in defaults.items():
         st.session_state[k] = v
 
 # =========================================================
-# SISTEMA DI AUTENTICAZIONE PROTETTO (IMMUNE A SPAZI E MAIUSCOLE)
+# SISTEMA DI AUTENTICAZIONE PROTETTO
 # =========================================================
 if not st.session_state["autenticato"]:
     st.subheader("🔒 Accesso Riservato - Operatori di Polizia Stradale")
@@ -62,7 +62,7 @@ DIZIONARIO_SEGMENTI = {
 transformer = Transformer.from_crs("EPSG:4326", "EPSG:32633", always_xy=True)
 
 # =========================================================
-# DICHIARAZIONE ANTICIPATA DELLE FUNZIONI CORE (EVITA NAMEERROR)
+# FUNZIONI CORE (TUTTE CORRETTE INDENTATE)
 # =========================================================
 def gps_to_utm(lat, lon):
     return transformer.transform(lon, lat)
@@ -83,17 +83,18 @@ def ocr(file):
 def parse_doc(text):
     t = (text or "").upper()
     out = {}
-    targa = re.search(r"\b[A-Z]{2}\d{3}[A-Z]{2}\b", t)
+    targa = re.search(r"\b[A-Z]{2}d{3}[A-Z]{2}\b", t)
     if targa:
         out["targa"] = targa.group()
-    nome = re.search(r"(NOME|COGNOME)\s*[:-]?\s*([A-ZÀ-Ü' ]{3,})", t)
+    nome = re.search(r"(NOME|COGNOME)s*[:-]?s*([A-ZÀ-Ü' ]{3,})", t)
     if nome:
         out["nome"] = nome.group(2).strip()
     return out
-    def reverse_geo(lat, lon):
+
+def reverse_geo(lat, lon):
     try:
         r = requests.get(
-            "https://openstreetmap.org",
+            "https://nominatim.openstreetmap.org/reverse",
             params={"format": "jsonv2", "lat": lat, "lon": lon, "addressdetails": 1},
             headers={"User-Agent": "RilievoForense/1.0"},
             timeout=8
@@ -145,9 +146,11 @@ def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, la
             ax.plot([-10, 40], [passo_corsia*nc, passo_corsia*nc], color="white", linestyle="--", linewidth=1.5, zorder=2)
 
     ax.plot(0, 0, "X", color="orange", markersize=12, label="Caposaldo X (Origine)", zorder=5)
-    ax.text(-1, -1.5, "Caposaldo X\n(Civico 57)", color="orange", fontweight="bold", fontsize=9, ha="center")
+    ax.text(-1, -1.5, "Caposaldo X
+(Civico 57)", color="orange", fontweight="bold", fontsize=9, ha="center")
     ax.plot(dist_xz, 0, "X", color="orange", markersize=12, label="Mira Z", zorder=5)
-    ax.text(dist_xz, -1.5, "Mira Z\n(Palo TIM)", color="orange", fontweight="bold", fontsize=9, ha="center")
+    ax.text(dist_xz, -1.5, "Mira Z
+(Palo TIM)", color="orange", fontweight="bold", fontsize=9, ha="center")
 
     ax.plot([0, dist_xz], [0, 0], color="red", linestyle="-.", linewidth=1.2, alpha=0.7, zorder=2)
     ax.text(dist_xz/2, -0.8, f"Linea Base X-Z = {dist_xz:.2f} m", color="red", fontsize=9, ha="center", fontweight="bold")
@@ -157,7 +160,8 @@ def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, la
         polygon = patches.Polygon(pts, closed=True, facecolor=v["colore_faccia"], edgecolor=v["colore_bordo"], linewidth=2, alpha=0.85, zorder=4)
         ax.add_patch(polygon)
         cx, cz = np.mean(pts[:, 0]), np.mean(pts[:, 1])
-        ax.text(cx, cz, f"Veicolo {v['let']}\n({v['targa']})", color="white", fontweight="bold", fontsize=8, ha="center", va="center")
+        ax.text(cx, cz, f"Veicolo {v['let']}
+({v['targa']})", color="white", fontweight="bold", fontsize=8, ha="center", va="center")
         for idx, pt in enumerate(pts[:2]):
             ax.plot(pt[0], pt[1], "o", color="cyan", markersize=6, zorder=5)
             ax.text(pt[0], pt[1]+0.4, f"{v['let']}{idx+1}", color="cyan", fontsize=8, fontweight="bold", ha="center")
@@ -170,87 +174,8 @@ def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, la
     ax.set_xlabel("Asse Metrico Longitudinale Z (metri Avanzamento)")
     ax.set_ylabel("Asse Metrico Ortogonale X (metri Scostamento)")
     return fig
-    def reverse_geo(lat, lon):
-    try:
-        r = requests.get(
-            "https://openstreetmap.org",
-            params={"format": "jsonv2", "lat": lat, "lon": lon, "addressdetails": 1},
-            headers={"User-Agent": "RilievoForense/1.0"},
-            timeout=8
-        )
-        r.raise_for_status()
-        j = r.json()
-        a = j.get("address", {})
-        road = a.get("road") or a.get("pedestrian") or a.get("suburb") or "SP55 Matino-Taviano"
-        comune = a.get("city") or a.get("town") or a.get("village") or a.get("municipality") or "Matino"
-        return f"{road}, {comune}"
-    except:
-        return "SP55 Matino-Taviano, Matino"
 
-def calcola_rettangolo_veicolo_utm(x_ant, z_ant, x_post, z_post, larghezza, lunghezza):
-    dx = x_ant - x_post
-    dz = z_ant - z_post
-    lunghezza_vec = math.hypot(dx, dz)
-    if lunghezza_vec == 0:
-        return np.array([
-            [x_ant - larghezza/2, z_ant],
-            [x_ant + larghezza/2, z_ant],
-            [x_ant + larghezza/2, z_ant - lunghezza],
-            [x_ant - larghezza/2, z_ant - lunghezza]
-        ])
-    ux, uz = dx / lunghezza_vec, dz / lunghezza_vec
-    nx, nz = -uz, ux
-    p1 = np.array([x_ant - (larghezza/2)*nx, z_ant - (larghezza/2)*nz])
-    p2 = np.array([x_ant + (larghezza/2)*nx, z_ant + (larghezza/2)*nz])
-    p3 = p2 - lunghezza * np.array([ux, uz])
-    p4 = p1 - lunghezza * np.array([ux, uz])
-    return np.array([p1, p2, p3, p4])
-
-def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, larg_c, num_c, stato_a, dist_xz):
-    fig, ax = plt.subplots(figsize=(15, 9))
-    ax.set_xlim(-10, 40)
-    ax.set_ylim(-5, 35)
-    ax.set_aspect('equal')
-    ax.axis("on")
-    ax.grid(True, linestyle=":", alpha=0.5)
-
-    strada_sfondo = patches.Rectangle((-10, 0), 50, larg_c, facecolor="#555555", alpha=0.9, zorder=1)
-    ax.add_patch(strada_sfondo)
-    ax.plot([-10, 40], [0, 0], color="white", linewidth=3, zorder=2)
-    ax.plot([-10, 40], [larg_c, larg_c], color="white", linewidth=3, zorder=2)
-
-    if num_c > 1:
-        passo_corsia = larg_c / num_c
-        for nc in range(1, num_c):
-            ax.plot([-10, 40], [passo_corsia*nc, passo_corsia*nc], color="white", linestyle="--", linewidth=1.5, zorder=2)
-
-    ax.plot(0, 0, "X", color="orange", markersize=12, label="Caposaldo X (Origine)", zorder=5)
-    ax.text(-1, -1.5, "Caposaldo X\n(Civico 57)", color="orange", fontweight="bold", fontsize=9, ha="center")
-    ax.plot(dist_xz, 0, "X", color="orange", markersize=12, label="Mira Z", zorder=5)
-    ax.text(dist_xz, -1.5, "Mira Z\n(Palo TIM)", color="orange", fontweight="bold", fontsize=9, ha="center")
-
-    ax.plot([0, dist_xz], [0, 0], color="red", linestyle="-.", linewidth=1.2, alpha=0.7, zorder=2)
-    ax.text(dist_xz/2, -0.8, f"Linea Base X-Z = {dist_xz:.2f} m", color="red", fontsize=9, ha="center", fontweight="bold")
-
-    for v in veicoli:
-        pts = v["punti_invallati"]
-        polygon = patches.Polygon(pts, closed=True, facecolor=v["colore_faccia"], edgecolor=v["colore_bordo"], linewidth=2, alpha=0.85, zorder=4)
-        ax.add_patch(polygon)
-        cx, cz = np.mean(pts[:, 0]), np.mean(pts[:, 1])
-        ax.text(cx, cz, f"Veicolo {v['let']}\n({v['targa']})", color="white", fontweight="bold", fontsize=8, ha="center", va="center")
-        for idx, pt in enumerate(pts[:2]):
-            ax.plot(pt[0], pt[1], "o", color="cyan", markersize=6, zorder=5)
-            ax.text(pt[0], pt[1]+0.4, f"{v['let']}{idx+1}", color="cyan", fontsize=8, fontweight="bold", ha="center")
-
-    for p in pedoni:
-        ax.plot(p["x"], p["z"], "ro", markersize=9, zorder=5)
-        ax.text(p["x"], p["z"] + 0.8, p["nome"], color="red", fontweight="bold", fontsize=9, ha="center")
-
-    ax.set_title(f"PLANIMETRIA FORENSE SCALATA - {localita.upper()}", fontsize=12, fontweight="bold")
-    ax.set_xlabel("Asse Metrico Longitudinale Z (metri Avanzamento)")
-    ax.set_ylabel("Asse Metrico Ortogonale X (metri Scostamento)")
-    return fig
-    def build_report(localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata, larg_carreggiata, num_corsie, stato_asfalto, note_luogo, orientamento_nord, lat_x, lon_x, lat_z, lon_z, dist_XZ, elenco_veicoli, elenco_pedoni):
+def build_report(localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata, larg_carreggiata, num_corsie, stato_asfalto, note_luogo, orientamento_nord, lat_x, lon_x, lat_z, lon_z, dist_XZ, elenco_veicoli, elenco_pedoni):
     testo = f"""==================================================================
 VERBALE DI RILIEVO DESCRITTIVO E PLANIMETRICO STATICO E CINEMATICO
 ==================================================================
@@ -272,19 +197,30 @@ DATI STRUMENTALI E LINEA DI BASE METRICA:
 CENSIMENTO UNITÀ COINVOLTE, REPERTI METRICI E STATO SANITARIO:
 """
     for v in elenco_veicoli:
-        testo += f"\n▶️ VEICOLO {v['let']} - Modello: {v['modello']} | Targa: {v['targa']}\n"
-        testo += f"  - Posizione GPS: Lat: {v['lat']:.6f}, Lon: {v['lon']:.6f}\n"
-        testo += f"  - Misure d'ingombro registrate: XA1={v['misure'][0]:.2f}m, ZA1={v['misure'][1]:.2f}m | XA2={v['misure'][2]:.2f}m, ZA2={v['misure'][3]:.2f}m\n"
-        testo += f"  - Conducente Ferito: {'SÌ' if v['ferito'] else 'NO'} | Prognosi: {v['prognosi']} gg | Ospedale: {v['ospedale']}\n"
-        testo += f"  - Riferimenti OCR Documenti: {v['estratto_auto']}\n"
+        testo += f"
+▶️ VEICOLO {v['let']} - Modello: {v['modello']} | Targa: {v['targa']}
+"
+        testo += f"  - Posizione GPS: Lat: {v['lat']:.6f}, Lon: {v['lon']:.6f}
+"
+        testo += f"  - Misure d'ingombro registrate: XA1={v['misure'][0]:.2f}m, ZA1={v['misure'][1]:.2f}m | XA2={v['misure'][2]:.2f}m, ZA2={v['misure'][3]:.2f}m
+"
+        testo += f"  - Conducente Ferito: {'SÌ' if v['ferito'] else 'NO'} | Prognosi: {v['prognosi']} gg | Ospedale: {v['ospedale']}
+"
+        testo += f"  - Riferimenti OCR Documenti: {v['estratto_auto']}
+"
         if v["passeggeri"]:
             for passg in v["passeggeri"]:
-                testo += f"    * Passeggero: {passg['descr']} | Ferito: {'SÌ' if passg['ferito'] else 'NO'} | Prognosi: {passg['prognosi']} gg\n"
+                testo += f"    * Passeggero: {passg['descr']} | Ferito: {'SÌ' if passg['ferito'] else 'NO'} | Prognosi: {passg['prognosi']} gg
+"
 
     for idx, ped in enumerate(elenco_pedoni):
-        testo += f"\n▶️ PEDONE / OSTACOLO P{idx+1}: {ped['nome']}\n"
-        testo += f"  - Posizione Metrica: X = {ped['x']:.2f} m, Z = {ped['z']:.2f} m\n"
-        testo += f"  - Stato Sanitario: Ferito: {'SÌ' if ped['ferito'] else 'NO'} | Prognosi: {ped['prognosi']} gg | Ricovero: {ped['ospedale']}\n"
+        testo += f"
+▶️ PEDONE / OSTACOLO P{idx+1}: {ped['nome']}
+"
+        testo += f"  - Posizione Metrica: X = {ped['x']:.2f} m, Z = {ped['z']:.2f} m
+"
+        testo += f"  - Stato Sanitario: Ferito: {'SÌ' if ped['ferito'] else 'NO'} | Prognosi: {ped['prognosi']} gg | Ricovero: {ped['ospedale']}
+"
     return testo
 
 # =========================================================
@@ -303,7 +239,8 @@ if st.session_state["strada_bloccata"] == "":
 localita = st.text_input("Località / Via Rilevata (Accertamento Satellitare)", value=st.session_state["strada_bloccata"])
 data_ora = st.text_input("Data e Ora del Rilievo", value="15/06/2026 | ORE: 06:50")
 operatori_input = st.text_input("Operatori di Polizia Stradale", value="Brig. Rima G., V.B. Rizzo V.")
-      col_strada1, col_strada2 = st.columns(2)
+
+col_strada1, col_strada2 = st.columns(2)
 with col_strada1:
     andamento_strada = st.selectbox("Andamento della sede stradale", options=["Rettilineo", "Curva a Destra ↪️", "Curva a Sinistra ↩️"])
     tipo_carreggiata = st.selectbox("Tipologia Carreggiata", options=["Carreggiata unica a doppio senso di circolazione", "Carreggiata Unica (Senso Unico)", "Doppia Carreggiata (Spartitraffico Centrale)"])
@@ -386,7 +323,8 @@ for i in range(n):
         "punti_invallati": punti_invallati, "colore_faccia": col_faccia, "colore_bordo": col_bordo,
         "estratto_auto": parsed if parsed else "Nessuno", "passeggeri": passeggeri_lista
     })
-    # =========================================================
+
+# =========================================================
 # SEZIONE INTERFACCIA UTENTE: 3. REGISTRO PEDONI RILEVATI
 # =========================================================
 st.header("3. Pedoni / Strutture / Terzi Coinvolti")
@@ -407,7 +345,7 @@ for i in range(pnum):
     pedoni.append({"nome": nome_p, "x": x_p, "z": z_p, "ferito": ferito_p, "prognosi": prog_p, "ospedale": osp_p})
 
 # =========================================================
-# FASCICOLO FOTOGRAFICO DIGITALIZZATO DA FOTOCAMERA HARDWARE
+# FASCICOLO FOTOGRAFICO DIGITALIZZATO
 # =========================================================
 st.header("📸 Fascicolo Fotografico Digitale dei Rilievi")
 if "foto_sinistro" not in st.session_state: st.session_state["foto_sinistro"] = []
@@ -434,18 +372,18 @@ with col_cam2:
         if st.button("🗑️ Svuota Fascicolo Fotografico"): st.session_state["foto_sinistro"] = []; st.rerun()
 
 # =========================================================
-#💥 ANALISI CINEMATICA FORENSE (STIMA VELOCITÀ PRE-URTO)
+# 💥 ANALISI CINEMATICA FORENSE (STIMA VELOCITÀ PRE-URTO)
 # =========================================================
 st.header("💥 Analisi Cinematica Forense (Tracce Frenata)")
 col_cine1, col_cine2 = st.columns(2)
 with col_cine1:
     usa_frenata = st.checkbox("Presenza di tracce di frenata sul fondo asfaltato")
     lunghezza_traccia = st.number_input("Lunghezza della traccia di frenata L (m)", min_value=0.0, max_value=200.0, value=15.50)
-with col_cine2:
+with col_cin2:
     pendenza_strada = st.number_input("Pendenza longitudinale sede stradale p (%)", min_value=-20.0, max_value=20.0, value=0.0)
     velocita_impatto = st.number_input("Stima velocità residua all'urto V_URTO (km/h)", min_value=0.0, max_value=200.0, value=30.0)
 
-stringa_stato = stato_asfalto if 'stato_asfalto' in locals() else "Asfalto asciutto (f=0.75)"
+stringa_stato = stato_asfalto
 f_aderenza = {"Asfalto asciutto (f=0.75)": 0.75, "Asfalto Bagnato (f=0.45)": 0.45, "Viscido / Fango (f=0.30)": 0.30}.get(stringa_stato, 0.75)
 v_stimata_kmh = 0.0
 if usa_frenata and lunghezza_traccia > 0:
@@ -468,7 +406,7 @@ st.download_button("📥 Scarica Elaborato Grafico Planimetrico (PNG HD)", data=
 # 5. INVOCAZIONE MOTORE DI REPORTISTICA AVANZATO ED EXPORT
 # =========================================================
 st.header("5. Relazione Tecnica Descrittiva Ufficiale di Reparto")
-note_l_agg = note_luogo if 'note_luogo' in locals() else ""
+note_l_agg = note_luogo
 if usa_frenata: note_l_agg += f" Tracce di frenata rilevate per {lunghezza_traccia}m. Velocità iniziale calcolata dal software: {v_stimata_kmh:.1f} km/h."
 
 report_finale = build_report(localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata, larg_carreggiata, num_corsie, stringa_stato, note_l_agg, orientamento_nord, lat_x, lon_x, lat_z, lon_z, dist_XZ, veicoli, pedoni)
