@@ -184,7 +184,7 @@ def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, la
     ax.text(dist_xz, -2.5, "Mira Z\n(Palo TIM N°7)", color="#d9534f", fontweight="bold", fontsize=9, ha="center")
 
     # Asse metrico di accertamento fondamentale X-Z
-    ax.plot([0, dist_xz],, color="#f0ad4e", linestyle="-.", linewidth=1.5, alpha=0.9, zorder=2)
+    ax.plot([0, dist_xz], color="#f0ad4e", linestyle="-.", linewidth=1.5, alpha=0.9, zorder=2)
 
 
     ax.text(dist_xz/2, -1.0, f"Linea Base X-Z = {dist_xz:.2f} m", color="#222222", fontsize=10, ha="center", fontweight="bold", bbox=dict(facecolor='white', alpha=0.8, boxstyle='round,pad=0.2'))
