@@ -44,13 +44,22 @@ if not st.session_state["autenticato"]:
     u = st.text_input("Identificativo Nome Utente (ID)", key="sys_user")
     p = st.text_input("Chiave di Accesso (Password)", type="password", key="sys_pass")
 
-            if st.button("Sblocca Terminale Operativo", type="primary", use_container_width=True):
-        # .strip() rimuove gli spazi automatici della tastiera del telefono
+            # =========================================================
+# GATEWAY DI AUTENTICAZIONE E SICUREZZA DI REPARTO
+# =========================================================
+if not st.session_state["autenticato"]:
+    st.subheader("🔒 Accesso Riservato - Terminale Operativo")
+    u = st.text_input("Identificativo Nome Utente (ID)")
+    p = st.text_input("Chiave di Accesso (Password)", type="password")
+
+    if st.button("Sblocca Terminale Operativo", type="primary", use_container_width=True):
         if u.strip().lower() == UTENTE_CORRETTO and p.strip() == PASSWORD_CORRETTA:
             st.session_state["autenticato"] = True
             st.rerun()
         else:
             st.error("❌ Credenziali errate o non autorizzate nel sistema centrale.")
+    st.stop()
+
 
 
 st.warning("⚠️ STRUMENTO PROFESSIONALE DI RILIEVO FORENSE — Verificare l'accuratezza strumentale dei capisaldi prima del deposito degli atti.")
