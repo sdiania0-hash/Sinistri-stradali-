@@ -2,7 +2,7 @@ streamlit
 numpy
 matplotlib
 pyproj
-streamlit-geolocation
-requests
 pytesseract
 Pillow
+requests
+streamlit-geolocation
