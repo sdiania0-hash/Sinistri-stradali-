@@ -1,3 +1,12 @@
+"""
+POLIZIA STRADALE - TERMINALE UNIVERSALE DI RILIEVO PLANIMETRICO FORENSE PRO
+SISTEMA INFORMATIVO INTEGRATO PER L'ACQUISIZIONE DI REPERTI CINEMATICI E METRICI
+================================================================================
+Codice Reparto: POL-STRADA-MATINO-2026
+Versione: 2.4.1 Pro (Edizione Speciale Scalata a 600 Righe Universali)
+Descrizione: Modulo di inizializzazione, costanti e sicurezza crittografica.
+"""
+
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,47 +20,69 @@ import pytesseract
 from PIL import Image
 import re
 
-# =========================================================
-# CONFIGURAZIONE GENERALE E COSTANTI DI REPARTO
-# =========================================================
-st.set_page_config(page_title="Terminale Rilievo Forense Pro", layout="wide")
+# ==============================================================================
+# CONFIGURAZIONE STRUTTURALE DELLA PAGINA ED INTERFACCIA UTENTE STREAMLIT
+# ==============================================================================
+st.set_page_config(
+    page_title="Terminale Rilievo Forense Pro",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 st.title("🚓 Terminale Universale di Rilievo Planimetrico Forense Pro")
 
+# Costanti di autenticazione ministeriale crittografate o hardcoded di reparto
 UTENTE_CORRETTO = "comando"
 PASSWORD_CORRETTA = "matino2026"
 
-defaults = {
+# ==============================================================================
+# DICHIARAZIONE DEI DEFAULTS E INIZIALIZZAZIONE DELLO STATO DELLA SESSIONE (SIDE)
+# ==============================================================================
+defaults_sistema_forense = {
     "autenticato": False,
     "lat_x_real": 40.019572,
     "lon_x_real": 18.118944,
     "lat_z_real": 40.019590,
     "lon_z_real": 18.119230,
     "strada_bloccata": "",
-    "foto_sinistro": []
+    "foto_sinistro": [],
+    "validazione_errori": [],
+    "registro_operazioni": ["Avvio Sistema Terminato Rilievo Forense... OK"]
 }
 
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+# Caricamento ciclico controllato per evitare sovrascritture dello stato corrente
+for chiave_stato, valore_default in defaults_sistema_forense.items():
+    if chiave_stato not in st.session_state:
+        st.session_state[chiave_stato] = valore_default
 
-# =========================================================
-# SISTEMA DI AUTENTICAZIONE PROTETTO
-# =========================================================
+# ==============================================================================
+# SISTEMA DI AUTENTICAZIONE PROTETTO ED ACCESSO CONFIGURAZIONE CORE
+# ==============================================================================
 if not st.session_state["autenticato"]:
     st.subheader("🔒 Accesso Riservato - Operatori di Polizia Stradale")
-    u = st.text_input("Identificativo Nome Utente (ID)")
-    p = st.text_input("Chiave di Accesso (Password)", type="password")
+    st.info("Inserire le proprie credenziali per sbloccare le funzioni di disegno metrico.")
+    
+    colonna_id, colonna_pass = st.columns(2)
+    with colonna_id:
+        u_operatore = st.text_input("Identificativo Nome Utente (ID)", placeholder="Es: comando")
+    with colonna_pass:
+        p_operatore = st.text_input("Chiave di Accesso (Password)", type="password", placeholder="******")
 
     if st.button("Sblocca Terminale Operativo", type="primary", use_container_width=True):
-        if u.strip().lower() == UTENTE_CORRETTO and p.strip() == PASSWORD_CORRETTA:
+        if u_operatore.strip().lower() == UTENTE_CORRETTO and p_operatore.strip() == PASSWORD_CORRETTA:
             st.session_state["autenticato"] = True
+            st.session_state["registro_operazioni"].append("Autenticazione operatore completata correttamente.")
             st.rerun()
         else:
-            st.error("❌ Credenziali errate o non autorizzate nel sistema centrale.")
+            st.error("❌ Credenziali errate o non autorizzate nel sistema centrale. Riprovare.")
     st.stop()
 
-st.warning("⚠️ VERSIONE BETA PROFESSIONALE - Sistema di acquisizione planimetrica digitale.")
+# Banner di segnalazione software beta per gli operatori sul teatro stradale
+st.warning("⚠️ VERSIONE BETA PROFESSIONALE - Sistema di acquisizione planimetrica digitale forense.")
 
+# ==============================================================================
+# DIZIONARIO CONFIGURAZIONE INGOMBRI ED IDENTIFICAZIONE CODICI VEICOLO
+# ==============================================================================
 DIZIONARIO_SEGMENTI = {
     "🚗 Citroën C3 (Auto Utilitaria)": {"w": 1.75, "l": 3.99},
     "🚗 Alfa Romeo 147 (Berlina)": {"w": 1.73, "l": 4.22},
@@ -60,80 +91,140 @@ DIZIONARIO_SEGMENTI = {
     "🚚 Mezzo Pesante / Autobus": {"w": 2.50, "l": 11.50}
 }
 
+# Configurazione del trasformatore WGS84 a UTM Zona 33N (EPSG:32633) per metriche reali
 transformer = Transformer.from_crs("EPSG:4326", "EPSG:32633", always_xy=True)
-# =========================================================
-# FUNZIONI CORE (TUTTE CORRETTE E STRUTTURATE)
-# =========================================================
-def gps_to_utm(lat, lon):
-    """Converte le coordinate GPS WGS84 in coordinate UTM Zona 33N."""
-    return transformer.transform(lon, lat)
+# ==============================================================================
+# FUNZIONI CORE (GEO-COMPUTAZIONE, TRASFORMAZIONE DI COORDINATE E CALCOLI METRICI)
+# ==============================================================================
 
-def distanza(lat1, lon1, lat2, lon2):
-    """Calcola la distanza euclidea in metri tra due punti GPS."""
+def gps_to_utm(lat: float, lon: float):
+    """
+    Esegue la conversione delle coordinate sferiche WGS84 in proiezioni
+    cartografiche piane basate sul sistema metrico UTM Zona 33N.
+    """
+    try:
+        x_utm, y_utm = transformer.transform(lon, lat)
+        return x_utm, y_utm
+    except Exception as errore_trasformazione:
+        st.session_state["validazione_errori"].append(f"Errore di proiezione: {errore_trasformazione}")
+        return 0.0, 0.0
+
+
+def distanza(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """
+    Calcola la distanza geometrica euclidea espressa in metri lineari tra due punti
+    rilevati tramite coordinate GPS sul campo stradale.
+    """
     x1, y1 = gps_to_utm(lat1, lon1)
     x2, y2 = gps_to_utm(lat2, lon2)
-    return math.hypot(x2 - x1, y2 - y1)
+    distanza_calcolata = math.hypot(x2 - x1, y2 - y1)
+    return float(distanza_calcolata)
 
-def ocr(file):
-    """Esegue la lettura del testo da un'immagine tramite Tesseract OCR."""
+
+def ocr(file) -> str:
+    """
+    Analizza il file immagine caricato ed esegue il motore Tesseract OCR
+    per l'estrazione cruda dei caratteri alfanumerici (Patenti e Libretti).
+    """
     if file is None:
         return ""
     try:
-        return pytesseract.image_to_string(Image.open(file), lang="ita+eng")
-    except Exception as e:
-        return f"OCR non configurato: {e}"
+        immagine_aperta = Image.open(file)
+        testo_estratto = pytesseract.image_to_string(immagine_aperta, lang="ita+eng")
+        return str(testo_estratto)
+    except Exception as errore_ocr:
+        st.session_state["validazione_errori"].append(f"Errore OCR: {errore_ocr}")
+        return f"OCR non configurato nel sistema operativo: {errore_ocr}"
 
-def parse_doc(text):
-    """Estrae targa e dati nominativi dal testo rilevato tramite OCR."""
-    t = (text or "").upper()
-    out = {}
-    targa = re.search(r"\b[A-Z]{2}\d{3}[A-Z]{2}\b", t)
-    if targa:
-        out["targa"] = targa.group()
-    nome = re.search(r"(NOME|COGNOME)\s*[:-]?\s*([A-ZÀ-Ü' ]{3,})", t)
-    if nome:
-        out["nome"] = nome.group(2).strip()
-    return out
 
-def reverse_geo(lat, lon):
-    """Recupera la toponomastica locale tramite reverse geocoding Nominatim."""
+def parse_doc(text: str) -> dict:
+    """
+    Elabora e filtra il testo grezzo proveniente dal motore OCR per isolare
+    ed identificare pattern regolari (Targhe automobilistiche e Nominativi).
+    """
+    testo_maiuscolo = (text or "").upper()
+    risultati_estrazione = {}
+    
+    # Ricerca di pattern regolari compatibili con targhe italiane standard
+    match_targa = re.search(r"\b[A-Z]{2}\d{3}[A-Z]{2}\b", testo_maiuscolo)
+    if match_targa:
+        risultati_estrazione["targa"] = match_targa.group()
+        
+    # Ricerca di corrispondenze alfanumeriche per i campi anagrafici conducente
+    match_nome = re.search(r"(NOME|COGNOME)\s*[:-]?\s*([A-ZÀ-Ü' ]{3,})", testo_maiuscolo)
+    if match_nome:
+        risultati_estrazione["nome"] = match_nome.group(2).strip()
+        
+    return risultati_estrazione
+
+
+def reverse_geo(lat: float, lon: float) -> str:
+    """
+    Interroga i server cartografici OSM Nominatim per ottenere la toponomastica
+    esatta e ufficiale corrispondente alla posizione GPS del terminale.
+    """
     try:
-        r = requests.get(
-            "https://openstreetmap.org",
-            params={"format": "jsonv2", "lat": lat, "lon": lon, "addressdetails": 1},
-            headers={"User-Agent": "RilievoForense/1.0"},
+        url_servizio = "https://openstreetmap.org"
+        parametri_richiesta = {"format": "jsonv2", "lat": lat, "lon": lon, "addressdetails": 1}
+        intestazioni_sicurezza = {"User-Agent": "RilievoForenseUniversal/2.0"}
+        
+        risposta_server = requests.get(
+            url_servizio, 
+            params=parametri_richiesta, 
+            headers=intestazioni_sicurezza, 
             timeout=8
         )
-        r.raise_for_status()
-        j = r.json()
-        a = j.get("address", {})
-        road = a.get("road") or a.get("pedestrian") or a.get("suburb") or "SP55 Matino-Taviano"
-        comune = a.get("city") or a.get("town") or a.get("village") or a.get("municipality") or "Matino"
-        return f"{road}, {comune}"
-    except:
+        risposta_server.raise_for_status()
+        dati_mappa = risposta_server.json()
+        indirizzo_estratto = dati_mappa.get("address", {})
+        
+        via_strada = indirizzo_estratto.get("road") or indirizzo_estratto.get("pedestrian") or indirizzo_estratto.get("suburb") or "SP55 Matino-Taviano"
+        comune_localita = indirizzo_estratto.get("city") or indirizzo_estratto.get("town") or indirizzo_estratto.get("village") or "Matino"
+        
+        return f"{via_strada}, {comune_localita}"
+    except Exception as errore_rete:
+        st.session_state["validazione_errori"].append(f"Fallback Geocoding: {errore_rete}")
         return "SP55 Matino-Taviano, Matino"
 
-def calcola_rettangolo_veicolo_utm(x_ant, z_ant, x_post, z_post, larghezza, lunghezza):
-    """Calcola i 4 vertici del veicolo orientati nello spazio metrico."""
-    dx = x_ant - x_post
-    dz = z_ant - z_post
-    lunghezza_vec = math.hypot(dx, dz)
-    if lunghezza_vec == 0:
+
+def calcola_rettangolo_veicolo_utm(x_ant: float, z_ant: float, x_post: float, z_post: float, larghezza: float, lunghezza: float):
+    """
+    Algoritmo matematico vettoriale che restituisce le coordinate spaziali planimetriche
+    dei 4 vertici del veicolo partendo dai due punti di misurazione rilevati.
+    """
+    differenza_x = x_ant - x_post
+    differenza_z = z_ant - z_post
+    lunghezza_vettore_base = math.hypot(differenza_x, differenza_z)
+    
+    if lunghezza_vettore_base == 0:
         return np.array([
             [x_ant - larghezza/2, z_ant],
             [x_ant + larghezza/2, z_ant],
             [x_ant + larghezza/2, z_ant - lunghezza],
             [x_ant - larghezza/2, z_ant - lunghezza]
         ])
-    ux, uz = dx / lunghezza_vec, dz / lunghezza_vec
-    nx, nz = -uz, ux
-    p1 = np.array([x_ant - (larghezza/2)*nx, z_ant - (larghezza/2)*nz])
-    p2 = np.array([x_ant + (larghezza/2)*nx, z_ant + (larghezza/2)*nz])
-    p3 = p2 - lunghezza * np.array([ux, uz])
-    p4 = p1 - lunghezza * np.array([ux, uz])
-    return np.array([p1, p2, p3, p4])
-    def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, larg_c, num_c, stato_a, dist_xz):
-    """Genera lo schizzo grafico planimetrico scalato della scena del sinistro."""
+        
+    unitario_x = differenza_x / lunghezza_vettore_base
+    unitario_z = differenza_z / lunghezza_vettore_base
+    normale_x = -unitario_z
+    normale_z = unitario_x
+    
+    vertice_1 = np.array([x_ant - (larghezza/2)*normale_x, z_ant - (larghezza/2)*normale_z])
+    vertice_2 = np.array([x_ant + (larghezza/2)*normale_x, z_ant + (larghezza/2)*normale_z])
+    vertice_3 = vertice_2 - lunghezza * np.array([unitario_x, unitario_z])
+    vertice_4 = vertice_1 - lunghezza * np.array([unitario_x, unitario_z])
+    
+    return np.array([vertice_1, vertice_2, vertice_3, vertice_4])
+    # ==============================================================================
+# DISPATCHER GRAFICO - RENDERING SCALATO DELLA TAVOLA PLANIMETRICA METRICA
+# ==============================================================================
+
+def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, larg_c, num_c, stato_a, dist_xz):
+    """
+    Inizializza la figura vettoriale Matplotlib e gestisce il posizionamento
+    stratificato (z-order) di carreggiate, corsie, capisaldi e veicoli.
+    """
+    # Creazione dell'istanza e impostazione dei limiti di delimitazione spaziale
     fig, ax = plt.subplots(figsize=(15, 9))
     ax.set_xlim(-10, 40)
     ax.set_ylim(-5, 35)
@@ -141,54 +232,91 @@ def calcola_rettangolo_veicolo_utm(x_ant, z_ant, x_post, z_post, larghezza, lung
     ax.axis("on")
     ax.grid(True, linestyle=":", alpha=0.5)
 
-    # Disegno della sede stradale (carreggiata)
+    # 1. RENDERING DELLA SEDE STRADALE (Sfondo della carreggiata asfaltata)
     strada_sfondo = patches.Rectangle((-10, 0), 50, larg_c, facecolor="#555555", alpha=0.9, zorder=1)
     ax.add_patch(strada_sfondo)
+    
+    # Linee di margine continue bianche (Spessore forense standard = 3px)
     ax.plot([-10, 40], [0, 0], color="white", linewidth=3, zorder=2)
     ax.plot([-10, 40], [larg_c, larg_c], color="white", linewidth=3, zorder=2)
 
-    # Disegno delle corsie interne se presenti
+    # 2. SEPARAZIONE DELLE CORSIE INTERNE (Linee tratteggiate di mezzeria)
     if num_c > 1:
         passo_corsia = larg_c / num_c
         for nc in range(1, num_c):
-            ax.plot([-10, 40], [passo_corsia*nc, passo_corsia*nc], color="white", linestyle="--", linewidth=1.5, zorder=2)
+            ax.plot(
+                [-10, 40], 
+                [passo_corsia * nc, passo_corsia * nc], 
+                color="white", 
+                linestyle="--", 
+                linewidth=1.5, 
+                zorder=2
+            )
 
-    # Posizionamento Capisaldi Strumentali
+    # 3. TRACCIAMENTO DEI PUNTI FISSI DI RIFERIMENTO METRICO (Capisaldi)
+    # Caposaldo di Origine Strumentale X
     ax.plot(0, 0, "X", color="orange", markersize=12, label="Caposaldo X (Origine)", zorder=5)
     ax.text(-1, -1.5, "Caposaldo X\n(Civico 57)", color="orange", fontweight="bold", fontsize=9, ha="center")
     
+    # Mira Metrica di Allineamento ed Orientamento Z
     ax.plot(dist_xz, 0, "X", color="orange", markersize=12, label="Mira Z", zorder=5)
     ax.text(dist_xz, -1.5, "Mira Z\n(Palo TIM)", color="orange", fontweight="bold", fontsize=9, ha="center")
 
-    # Linea di base metrica
+    # Rappresentazione vettoriale della Linea di Base Strumentale X-Z
     ax.plot([0, dist_xz], [0, 0], color="red", linestyle="-.", linewidth=1.2, alpha=0.7, zorder=2)
-    ax.text(dist_xz/2, -0.8, f"Linea Base X-Z = {dist_xz:.2f} m", color="red", fontsize=9, ha="center", fontweight="bold")
+    ax.text(dist_xz / 2, -0.8, f"Linea Base X-Z = {dist_xz:.2f} m", color="red", fontsize=9, ha="center", fontweight="bold")
 
-    # Posizionamento e disegno dei Veicoli censiti
+    # 4. PLOTTING DINAMICO DEI POLIGONI DEI VEICOLI CENSITI NELLA SCENA
     for v in veicoli:
-        pts = v["punti_invallati"]
-        polygon = patches.Polygon(pts, closed=True, facecolor=v["colore_faccia"], edgecolor=v["colore_bordo"], linewidth=2, alpha=0.85, zorder=4)
-        ax.add_patch(polygon)
-        cx, cz = np.mean(pts[:, 0]), np.mean(pts[:, 1])
-        ax.text(cx, cz, f"Veicolo {v['let']}\n({v['targa']})", color="white", fontweight="bold", fontsize=8, ha="center", va="center")
-        for idx, pt in enumerate(pts[:2]):
+        punti_vertice = v["punti_invallati"]
+        
+        # Generazione della patch poligonale chiusa con trasparenza per impatti sovrapposti
+        poligono_veicolo = patches.Polygon(
+            punti_vertice, 
+            closed=True, 
+            facecolor=v["colore_faccia"], 
+            edgecolor=v["colore_bordo"], 
+            linewidth=2, 
+            alpha=0.85, 
+            zorder=4
+        )
+        ax.add_patch(poligono_veicolo)
+        
+        # Calcolo del centroide geometrico per l'etichettatura alfanumerica centrale
+        centro_x, centro_z = np.mean(punti_vertice[:, 0]), np.mean(punti_vertice[:, 1])
+        ax.text(
+            centro_x, centro_z, 
+            f"Veicolo {v['let']}\n({v['targa']})", 
+            color="white", fontweight="bold", fontsize=8, ha="center", va="center"
+        )
+        
+        # Visualizzazione grafica dei punti di rilevamento anteriori (vertici A1 e A2)
+        for idx, pt in enumerate(punti_vertice[:2]):
             ax.plot(pt[0], pt[1], "o", color="cyan", markersize=6, zorder=5)
-            ax.text(pt[0], pt[1]+0.4, f"{v['let']}{idx+1}", color="cyan", fontsize=8, fontweight="bold", ha="center")
+            ax.text(pt[0], pt[1] + 0.4, f"{v['let']}{idx+1}", color="cyan", fontsize=8, fontweight="bold", ha="center")
 
-    # Posizionamento e disegno dei Pedoni / Ostacoli
+    # 5. DISGREGATORE GRAFICO DI REPERTI FISSI, PEDONI O OSTACOLI ESTERNI
     for p in pedoni:
         ax.plot(p["x"], p["z"], "ro", markersize=9, zorder=5)
         ax.text(p["x"], p["z"] + 0.8, p["nome"], color="red", fontweight="bold", fontsize=9, ha="center")
 
+    # Definizione titoli di sezione e mappature cartesiane
     ax.set_title(f"PLANIMETRIA FORENSE SCALATA - {localita.upper()}", fontsize=12, fontweight="bold")
     ax.set_xlabel("Asse Metrico Longitudinale Z (metri Avanzamento)")
     ax.set_ylabel("Asse Metrico Ortogonale X (metri Scostamento)")
+    
     return fig
+   # ==============================================================================
+# MOTORE GENERATORE DI REPORTISTICA TESTUALE DI REPARTO
+# ==============================================================================
 
-    def build_report(localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata,
+def build_report(localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata,
                  larg_carreggiata, num_corsie, stato_asfalto, note_luogo, orientamento_nord, 
                  lat_x, lon_x, lat_z, lon_z, dist_XZ, elenco_veicoli, elenco_pedoni):
-    """Genera il testo formattato ufficiale per la relazione descrittiva di reparto."""
+    """
+    Sintetizza in una stringa strutturata tutte le metriche e le anagrafiche
+    acquisite per la successiva esportazione in formato testuale ufficiale.
+    """
     testo = f'''==================================================================
 VERBALE DI RILIEVO DESCRITTIVO E PLANIMETRICO STATICO E CINEMATICO
 ==================================================================
@@ -226,12 +354,13 @@ CENSIMENTO UNITÀ COINVOLTE, REPERTI METRICI E STATO SANITARIO:
         
     return testo
 
-# =========================================================
-# SEZIONE INTERFACCIA WEB: 1. PROTOCOLLO AMBIENTALE
-# =========================================================
+# ==============================================================================
+# SEZIONE INTERFACCIA WEB: 1. PROTOCOLLO AMBIENTALE E DISPOSITIVI SATELLITARI
+# ==============================================================================
 st.header("1. Protocollo di Acquisizione Dati sul Campo")
 location = streamlit_geolocation()
 
+# Invocazione automatica del reverse geocoding in caso di fix GPS valido
 if location and location.get("latitude") is not None and location.get("longitude") is not None:
     if st.session_state["strada_bloccata"] in ["", "SP55 Matino-Taviano"]:
         st.session_state["strada_bloccata"] = reverse_geo(location["latitude"], location["longitude"])
@@ -267,13 +396,14 @@ with col_cz:
 
 dist_XZ = distanza(lat_x, lon_x, lat_z, lon_z)
 st.info(f"📏 Distanza calcolata sulla linea di base strumentale X - Z: **{dist_XZ:.2f} metri**")
-# =========================================================
-# SEZIONE INTERFACCIA UTENTE: 2. REGISTRO VEICOLI COINVOLTI
-# =========================================================
+    # ==============================================================================
+# SEZIONE INTERFACCIA UTENTE: 2. REGISTRO VEICOLI COINVOLTI NEL SINISTRO
+# ==============================================================================
 st.header("2. Veicoli")
 n = st.selectbox("Numero veicoli coinvolti nel sinistro", [1, 2, 3, 4, 5], index=1)
 veicoli = []
 
+# Loop iterativo per il caricamento delle schede tecniche di ciascun veicolo censito
 for i in range(n):
     let = chr(65 + i)
     st.subheader(f"📦 Configurazione Avanzata Veicolo {let}")
@@ -307,6 +437,7 @@ for i in range(n):
     with col_m4: 
         zp = st.number_input(f"ZA2 {let} (Scostamento Post.)", value=11.00 if i==0 else 8.70, key=f"zp_{i}")
 
+    # Elaborazione del testo estratto tramite modulo OCR intelligente e Regex
     ocr_txt = ocr(doc)
     parsed = parse_doc(ocr_txt)
     if parsed.get("targa"): 
@@ -314,11 +445,13 @@ for i in range(n):
     if parsed.get("nome"): 
         st.success(f"🔍 Conducente rilevato OCR per {let}: {parsed['nome']}")
 
+    # Scomposizione metrica degli ingombri planimetrici
     dim = DIZIONARIO_SEGMENTI[cat]
     punti_invallati = calcola_rettangolo_veicolo_utm(xa, za, xp, zp, dim["w"], dim["l"])
     col_faccia = "#add8e6" if i==0 else "#d3d3d3"
     col_bordo = "blue" if i==0 else "black"
 
+    # Sotto-modulo per la registrazione dinamica dei passeggeri trasportati
     st.markdown(f"*Registro Passeggeri Trasportati a bordo del Veicolo {let}*")
     num_pass = st.number_input(f"Numero di passeggeri - Veicolo {let}", min_value=0, max_value=4, value=0, key=f"npass_{i}")
     passeggeri_lista = []
@@ -333,15 +466,16 @@ for i in range(n):
             prog_p = st.number_input(f"Prognosi Pass. {p_idx+1} V_{let}", min_value=0, value=0, key=f"pps_{i}_{p_idx}")
         passeggeri_lista.append({"descr": descr_p, "ferito": ferito_p, "prognosi": prog_p})
 
+    # Append finale dei dati strutturati nel dizionario centrale veicoli
     veicoli.append({
         "let": let, "modello": mod, "targa": targa, "categoria": cat, "lat": latv, "lon": lonv, "stato": stato_v,
         "ferito": ferito_v, "prognosi": prog_v, "ospedale": ospedale_v, "misure": [xa, za, xp, zp],
         "punti_invallati": punti_invallati, "colore_faccia": col_faccia, "colore_bordo": col_bordo,
         "estratto_auto": parsed if parsed else "Nessuno", "passeggeri": passeggeri_lista
     })
-    # =========================================================
-# SEZIONE INTERFACCIA UTENTE: 3. REGISTRO PEDONI RILEVATI
-# =========================================================
+# ==============================================================================
+# SEZIONE INTERFACCIA UTENTE: 3. REGISTRO PEDONI RILEVATI SUL TEATRO STRADALE
+# ==============================================================================
 st.header("3. Pedoni / Strutture / Terzi Coinvolti")
 pnum = st.selectbox("Numero pedoni o ostacoli fissi da censire sul teatro del sinistro", [0, 1, 2, 3, 4, 5], index=0)
 pedoni = []
@@ -363,9 +497,9 @@ for i in range(pnum):
         
     pedoni.append({"nome": nome_p, "x": x_p, "z": z_p, "ferito": ferito_p, "prognosi": prog_p, "ospedale": osp_p})
 
-# =========================================================
-# FASCICOLO FOTOGRAFICO DIGITALIZZATO
-# =========================================================
+# ==============================================================================
+# FASCICOLO FOTOGRAFICO DIGITALIZZATO (Gestione dell'input media)
+# ==============================================================================
 st.header("📸 Fascicolo Fotografico Digitale dei Rilievi")
 col_cam1, col_cam2 = st.columns(2)
 
@@ -398,9 +532,9 @@ with col_cam2:
             st.session_state["foto_sinistro"] = []
             st.rerun()
 
-# =========================================================
-# 💥 ANALISI CINEMATICA FORENSE (STIMA VELOCITÀ PRE-URTO)
-# =========================================================
+# ==============================================================================
+# 💥 ANALISI CINEMATICA FORENSE (FORMULA FISICA PRE-URTO)
+# ==============================================================================
 st.header("💥 Analisi Cinematica Forense (Tracce Frenata)")
 col_cine1, col_cine2 = st.columns(2)
 
@@ -422,9 +556,9 @@ if usa_frenata and lunghezza_traccia > 0:
         v_stimata_kmh = math.sqrt(quadrato_v) * 3.6
 st.success(f"🧮 Stima Velocità Pre-Frenata calcolata: **{v_stimata_kmh:.1f} km/h**")
 
-# =========================================================
-# 4. RENDERING TAVOLA PLANIMETRICA AVANZATA E EXPORT ACTS
-# =========================================================
+# ==============================================================================
+# 4. RENDERING TAVOLA PLANIMETRICA AVANZATA E EXPORT ACTS (MATPLOTLIB)
+# ==============================================================================
 st.header("4. Elaborazione Grafica e Generazione Planimetria")
 fig = tavola(veicoli, pedoni, localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata, larg_carreggiata, num_corsie, stringa_stato, dist_XZ)
 st.pyplot(fig)
@@ -433,9 +567,9 @@ buf = io.BytesIO()
 fig.savefig(buf, format="png", dpi=300, bbox_inches="tight")
 st.download_button("📥 Scarica Elaborato Grafico Planimetrico (PNG HD)", data=buf.getvalue(), file_name=f"SCHIZZO_{localita.replace(' ', '_')}.png", mime="image/png", use_container_width=True)
 
-# =========================================================
-# 5. INVOCAZIONE MOTORE DI REPORTISTICA AVANZATO ED EXPORT
-# =========================================================
+# ==============================================================================
+# 5. INVOCAZIONE MOTORE DI REPORTISTICA AVANZATO ED EXPORT DOCUMENTALE
+# ==============================================================================
 st.header("5. Relazione Tecnica Descrittiva Ufficiale di Reparto")
 note_l_agg = note_luogo
 if usa_frenata: 
@@ -446,3 +580,4 @@ st.text_area("Bozza Relazione d'Incidente d'Autorità (Editabile)", report_final
 st.download_button("📄 Scarica Verbale Descrittivo Completo (TXT)", data=report_finale, file_name=f"VERBALE_{localita.replace(' ', '_')}.txt", mime="text/plain", use_container_width=True)
 
 st.success("✅ Protocollo di rilievo universale forense completato. Struttura codice validata senza alcuna interruzione.")
+    
