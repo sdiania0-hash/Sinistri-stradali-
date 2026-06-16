@@ -207,7 +207,8 @@ def genera_tavola_grafica():
 
     ax_mappa.scatter([0, dist_XZ], [0, 0], color='#e67e22', s=250, marker='X', edgecolor='white', zorder=10)
 
-    ax_mappa.plot([0, dist_XZ],, color='#e67e22', linestyle='-', linewidth=2, zorder=3)
+    ax_mappa.plot([0, dist_XZ], [0, 0], color='#e67e22', linestyle='-', linewidth=2, zorder=3)
+
     ax_mappa.scatter([pu_x], [-pu_z], color='red', s=300, marker='*', edgecolor='white', linewidth=1.5, zorder=8)
     ax_mappa.plot([frenata_x, pu_x], [-frenata_z, -pu_z], color='#f1c40f', linestyle='--', linewidth=3, zorder=4)
     ax_mappa.text(-3, 2.0, f"🧭 Nord: {orientamento_nord}", color='black', weight='bold', fontsize=9, bbox=dict(facecolor='white', alpha=0.8, pad=2))
