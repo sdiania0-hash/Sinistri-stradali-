@@ -55,6 +55,7 @@ DIZIONARIO_SEGMENTI = {
     "🚚 Mezzo Pesante / Autobus": {"w": 2.50, "l": 11.50, "t": "auto"}
 }
 
+# Trasformatore WGS84 -> UTM Zona 33N (Italia centro-meridionale)
 transformer = Transformer.from_crs("EPSG:4326", "EPSG:32633", always_xy=True)
 
 def gps_to_utm(lat, lon):
@@ -114,7 +115,7 @@ def recupera_toponomastica_reale(lat, lon):
         return f"{via}, {comune}"
     except Exception:
         return "SP55 Matino-Taviano"
-    st.header("1. Protocollo di Acquisizione Dati sul Campo")
+     st.header("1. Protocollo di Acquisizione Dati sul Campo")
 
 st.subheader("🛰️ Posizionamento Hardware Attivo")
 st.markdown("*Premere il quadratino sottostante sul telefono per agganciare istantaneamente i satelliti ed eseguire la decodifica della via:*")
@@ -145,7 +146,7 @@ with col_info_strada1:
     larg_carreggiata = st.number_input("Larghezza della singola carreggiata (m)", min_value=2.0, max_value=20.0, value=6.60)
     num_corsie = st.selectbox("Numero corsie per carreggiata", options=[1, 2, 3, 4], index=1)
 with col_info_strada2:
-    andamento_strada = st.selectbox("Andamento della sede stradale", options=["Rettilineo", "Curva a Destra ↪️", "Curva a Sinistar ↩️"])
+    andamento_strada = st.selectbox("Andamento della sede stradale", options=["Rettilineo", "Curva a Destra ↪️", "Curva a Sinistra ↩️"])
     orientamento_nord = st.selectbox("Orientamento Linea di Base (Direzione Caposaldo Z)", options=["Nord ⬆️", "Nord-Est ↗️", "Est ➡️", "Sud-Est ↘️", "Sud ⬇️", "Sud-Ovest ↙️", "Ovest ⬅️", "Nord-Ovest ↖️"])
     stato_asfalto = st.selectbox("Stato del fondo stradale", options=["Asfalto Asciutto (f=0.75)", "Asfalto Bagnato (f=0.45)", "Viscido / Fango (f=0.30)"])
 
@@ -178,7 +179,7 @@ num_veicoli = st.selectbox("Numero totale veicoli da censire", options=[1, 2, 3,
 
 elenco_veicoli = []
 for k in range(num_veicoli):
-    let = chr(65 + k)
+    let = chr(65 + k)  # Genera A, B, C...
     st.markdown(f"### 🚗 Unità Veicolare {let}")
     
     col_v1, col_v2 = st.columns(2)
@@ -194,6 +195,7 @@ for k in range(num_veicoli):
         tipo_forma = st.radio(f"Rappresentazione Grafica {let}", options=["Rettangolo", "Punto"], key=f"form_{k}")
     
     st.markdown(f"#### 📐 Rilievi Metrici (Metodo delle Coordinate Ortogonali) per Veicolo {let}")
+    st.write("Inserire le distanze misurate partendo dal Caposaldo X (0,0) lungo la linea di base X-Z.")
     
     col_m1, col_m2 = st.columns(2)
     with col_m1:
@@ -204,12 +206,13 @@ for k in range(num_veicoli):
         
     with col_m2:
         vx2 = st.number_input(f"Punto B (Posteriore) - Distanza Asse X (m) {let}", value=2.1 + (k * 6), key=f"vx2_{k}")
-        vz2_in = st.number_input(f"Punto B (Posteriore) - Scostamento Asse Z (m) {let}", value=1.5, key=f"vlat2_{k}_in")
+        vz2_in = st.number_input(f"Punto B (Posteriore) - Scostamento Asse Z (m) {let}", value=1.5, key=f"vz2_{k}")
         vlato2 = st.radio(f"Lato Punto B {let}", ["Destra", "Sinistra '-'"], key=f"vlat2_{k}")
         vz2 = -vz2_in if "Sinistra" in vlato2 else vz2_in
 
     punti_v = np.array([[vx1, vz1], [vx2, vz2]])
 
+    # 📁 Sezione Documenti e OCR Veicolo
     st.markdown("##### 📁 Caricamento Documenti Conducente e Veicolo (OCR)")
     doc_patente = st.file_uploader(f"Patente conducente {let}", type=["jpg", "jpeg", "png"], key=f"pat_{k}")
     doc_carta = st.file_uploader(f"Carta circolazione {let}", type=["jpg", "jpeg", "png"], key=f"lib_{k}")
@@ -219,7 +222,7 @@ for k in range(num_veicoli):
         st.session_state[f"ocr_veicolo_{k}"] = {"patente": "", "carta": "", "assicurazione": "", "estratto": {}}
 
     if st.button(f"🔎 Leggi documenti Veicolo {let}", key=f"ocr_btn_{k}", use_container_width=True):
-        with st.spinner("Estrazione testo tramite modulo OCR..."):
+        with st.spinner("Estrazione testo in corso..."):
             testo_pat = estrai_testo_ocr(doc_patente)
             testo_lib = estrai_testo_ocr(doc_carta)
             testo_ass = estrai_testo_ocr(doc_ass)
@@ -232,15 +235,18 @@ for k in range(num_veicoli):
             }
 
     ocr_v = st.session_state[f"ocr_veicolo_{k}"]
-    
     col_ocr_txt = st.columns(3)
-    with col_ocr_txt[0]: st.text_area(f"Testo OCR patente {let}", value=ocr_v["patente"], height=100, key=f"ocr_pat_txt_{k}")
-    with col_ocr_txt[1]: st.text_area(f"Testo OCR carta circolazione {let}", value=ocr_v["carta"], height=100, key=f"ocr_lib_txt_{k}")
-    with col_ocr_txt[2]: st.text_area(f"Testo OCR assicurazione {let}", value=ocr_v["assicurazione"], height=100, key=f"ocr_ass_txt_{k}")
+    with col_ocr_txt[0]:
+        st.text_area(f"Testo OCR patente {let}", value=ocr_v["patente"], height=100, key=f"ocr_pat_txt_{k}")
+    with col_ocr_txt[1]:
+        st.text_area(f"Testo OCR carta circolazione {let}", value=ocr_v["carta"], height=100, key=f"ocr_lib_txt_{k}")
+    with col_ocr_txt[2]:
+        st.text_area(f"Testo OCR assicurazione {let}", value=ocr_v["assicurazione"], height=100, key=f"ocr_ass_txt_{k}")
         
-    st.write("**Dati identificativi estratti automaticamente:**")
+    st.write("**Dati rilevati da analisi semantica:**")
     st.json(ocr_v["estratto"])
 
+    # 🩹 Stato Sanitario Conducente
     st.markdown("##### 🩹 Stato del Conducente")
     col_cond_s1, col_cond_s2 = st.columns(2)
     with col_cond_s1:
@@ -249,6 +255,7 @@ for k in range(num_veicoli):
     with col_cond_s2:
         ospedale_cond = st.text_input(f"Ospedale trasporto Conducente {let}", value="Vito Fazzi - Lecce" if flag_cond_ferito else "Nessuno", key=f"osp_c_{k}")
 
+    # 👥 Passeggeri del Veicolo
     st.markdown(f"##### 👥 Passeggeri Trasportati (Veicolo {let})")
     num_pass = st.number_input(f"Numero passeggeri su Veicolo {let}", min_value=0, max_value=10, value=0, key=f"n_p_{k}")
     elenco_pass_v = []
@@ -263,21 +270,30 @@ for k in range(num_veicoli):
             o_p = st.text_input(f"Ospedale trasporto Pass. {p+1}", value="Vito Fazzi - Lecce" if f_p else "Nessuno", key=f"osp_p_{k}_{p}")
             prog_p = st.number_input(f"Prognosi (giorni) Pass. {p+1}", min_value=0, max_value=365, value=0, key=f"p_prog_{k}_{p}")
 
-        if f"ocr_pass_{k}_{p}" not in st.session_state: st.session_state[f"ocr_pass_{k}_{p}"] = ""
+        if f"ocr_pass_{k}_{p}" not in st.session_state:
+            st.session_state[f"ocr_pass_{k}_{p}"] = ""
         if st.button(f"🔎 Leggi documento Pass. {p+1}", key=f"ocr_pass_btn_{k}_{p}"):
             st.session_state[f"ocr_pass_{k}_{p}"] = estrai_testo_ocr(foto_doc)
 
         st.text_area(f"Testo OCR Pass. {p+1}", value=st.session_state[f"ocr_pass_{k}_{p}"], height=80, key=f"ocr_pass_txt_{k}_{p}")
 
-        elenco_pass_v.append({"descr": f"Passeggero {p+1}", "ferito": f_p, "prognosi": prog_p, "ospedale": o_p, "ocr": st.session_state[f"ocr_pass_{k}_{p}"]})
+        elenco_pass_v.append({
+            "descr": f"Passeggero {p+1}",
+            "ferito": f_p,
+            "prognosi": prog_p,
+            "ospedale": o_p,
+            "ocr": st.session_state[f"ocr_pass_{k}_{p}"]
+        })
 
     elenco_veicoli.append({
         "let": let, "modello": modello, "targa": targa, "lat": lat_v, "lon": lon_v, "punti": punti_v,
-        "ocr": ocr_v, "passeggeri": elenco_pass_v, "stato": stato_mezzo, "forma": tipo_forma, "categoria": categoria,
-        "ferito": flag_cond_ferito, "prognosi": prognosi_cond, "ospedale": ospedale_cond, "estratto_auto": ocr_v["estratto"]
+        "misure_base": [vx1, vz1], "ocr": ocr_v, "passeggeri": elenco_pass_v, "stato": stato_mezzo,
+        "forma": tipo_forma, "categoria": categoria, "ferito": flag_cond_ferito, "prognosi": prognosi_cond,
+        "ospedale": ospedale_cond, "estratto_auto": ocr_v["estratto"]
     })
     st.divider()
 
+# 🚶 Sezione Pedoni e Ostacoli Fissi
 st.header("3. Censimento Pedoni / Ostacoli Fissi")
 num_pedoni = st.selectbox("Quanti pedoni o ostacoli fissi vuoi registrare?", options=[0, 1, 2, 3, 4, 5], index=0)
 elenco_pedoni = []
@@ -297,13 +313,17 @@ for kp in range(num_pedoni):
         ped_lato = st.radio(f"Lato Ostacolo {kp+1}", ["Destra", "Sinistra '-'"], key=f"p_lt_{kp}")
         ped_z = -ped_z_in if "Sinistra" in ped_lato else ped_z_in
 
-    if f"ocr_ped_{kp}" not in st.session_state: st.session_state[f"ocr_ped_{kp}"] = ""
+    if f"ocr_ped_{kp}" not in st.session_state:
+        st.session_state[f"ocr_ped_{kp}"] = ""
     if st.button(f"🔎 Leggi documento Pedone {kp+1}", key=f"ocr_ped_btn_{kp}"):
         st.session_state[f"ocr_ped_{kp}"] = estrai_testo_ocr(ped_doc)
 
     st.text_area(f"Testo OCR Pedone {kp+1}", value=st.session_state[f"ocr_ped_{kp}"], height=80, key=f"ocr_ped_txt_{kp}")
 
-    elenco_pedoni.append({"nome": ped_nome, "x": ped_x, "z": ped_z, "ferito": ped_ferito, "prognosi": ped_prog, "ospedale": ped_osp, "ocr": st.session_state[f"ocr_ped_{kp}"]})
+    elenco_pedoni.append({
+        "nome": ped_nome, "x": ped_x, "z": ped_z, "ferito": ped_ferito,
+        "prognosi": ped_prog, "ospedale": ped_osp, "ocr": st.session_state[f"ocr_ped_{kp}"]
+    })
      # =========================================================
 # 🎨 4. MOTORE GRAFICO PLANIMETRICO E RELAZIONE FORENSE
 # =========================================================
@@ -316,23 +336,27 @@ def genera_tavola_grafica(elenco_veicoli, elenco_pedoni, localita, data_ora, ope
     ax.set_facecolor("#F2F2F2")
     ax.grid(True, which="both", color="#D3D3D3", linestyle="--", linewidth=0.5)
     
+    # Rappresentazione dei Capisaldi Metrici Strumentali
     ax.plot(0, 0, "ro", markersize=10, markeredgecolor="black", label="Caposaldo Origine X (0,0)")
     ax.text(-0.5, -0.6, "X (0,0)", color="red", fontweight="bold", fontsize=10)
     
     ax.plot(dist_XZ, 0, "bo", markersize=10, markeredgecolor="black", label=f"Mira Linea Base Z ({dist_XZ}m)")
     ax.text(dist_XZ - 1.0, -0.6, f"Z ({dist_XZ}m)", color="blue", fontweight="bold", fontsize=10)
     
+    # Tracciamento della Linea di Base Fondamentale del Rilievo
     ax.plot([0, dist_XZ], [0, 0], "k--", linewidth=1.5, alpha=0.7)
     
+    # Rappresentazione della Sede Stradale (Carreggiata Simulata)
     limite_superiore = larg_carreggiata
     limite_inferiore = -larg_carreggiata
     ax.axhline(y=limite_superiore, color="#404040", linestyle="-", linewidth=2.5, label="Margini Carreggiata")
     ax.axhline(y=limite_inferiore, color="#404040", linestyle="-", linewidth=2.5)
     ax.axhline(y=0, color="#808080", linestyle=":", linewidth=1.0)
     
+    # 🚗 DISEGNO DELLE UNITÀ VEICOLARI IN SCALA
     for v in elenco_veicoli:
-        p_ant = v["punti"][0]
-        p_post = v["punti"][1]
+        p_ant = v["punti"][0] # [x, z] anteriore
+        p_post = v["punti"][1] # [x, z] posteriore
         let = v["let"]
         
         dim = DIZIONARIO_SEGMENTI.get(v["categoria"], {"w": 1.80, "l": 4.20})
@@ -343,19 +367,9 @@ def genera_tavola_grafica(elenco_veicoli, elenco_pedoni, localita, data_ora, ope
         ax.text(p_ant[0], p_ant[1] + 0.2, f"{let}1", color="green", fontweight="bold", fontsize=9)
         ax.text(p_post[0], p_post[1] + 0.2, f"{let}2", color="green", fontweight="bold", fontsize=9)
         
+        # Linee di quota
         ax.plot([p_ant[0], p_ant[0]], [0, p_ant[1]], color="green", linestyle=":", alpha=0.5)
         ax.plot([p_post[0], p_post[0]], [0, p_post[1]], color="green", linestyle=":", alpha=0.5)
         
-        ax.text(p_ant[0], p_ant[1]/2, f"{abs(p_ant[1]):.2f}m", color="darkgreen", fontsize=8, ha="center")
-        ax.text(p_post[0], p_post[1]/2, f"{abs(p_post[1]):.2f}m", color="darkgreen", fontsize=8, ha="center")
-        ax.text(p_ant[0], 0.1, f"x={p_ant[0]:.2f}m", color="black", fontsize=8)
-        
-        if v["forma"] == "Rettangolo":
-            vertici = calcola_rettangolo_veicolo_utm(p_ant[0], p_ant[1], p_post[0], p_post[1], larghezza=w, lunghezza=l)
-            rettangolo = patches.Polygon(vertici, closed=True, linewidth=2, edgecolor="#1f77b4", facecolor="#1f77b4", alpha=0.4, label=f"Sagoma Mezzo {let}")
-            ax.add_patch(rettangolo)
-            ax.text(np.mean(vertici[:,0]), np.mean(vertici[:,1]), f"VEICOLO {let}\n({v['targa']})", color="black", fontsize=9, fontweight="bold", ha="center", va="center")
-        else:
-            ax.plot(p_ant[0], p_ant[1], "s", markersize=12, color="#1f77b4", label=f"Punto Unità {let}")
-
-            
+        ax.text(p_ant[0], p_ant[1]/2, f"{abs(p_ant[1]):.2f}m", color="darkgreen", fontsize=8
+                
