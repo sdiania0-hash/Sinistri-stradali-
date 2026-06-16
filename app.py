@@ -295,7 +295,8 @@ with col_info_strada1:
     andamento_strada = st.selectbox("Andamento della sede stradale", options=["Rettilineo", "Curva a Destra ↪️", "Curva a Sinistra ↩️"])
     tipo_carreggiata = st.selectbox("Tipologia Carreggiata", options=["Carreggiata unica a doppio senso di circolazione", "Carreggiata Unica (Senso Unico)", "Doppia Carreggiata (Spartitraffico Centrale)"])
     larg_carreggiata = st.number_input("Larghezza della singola carreggiata cd (m)", min_value=2.0, max_value=20.0, value=6.60)
-    num_corsie = st.selectbox("Numero corsie totali della carreggiata", options=, index=1)
+    num_corsie = st.selectbox("Numero corsie totali della carreggiata", options=[1, 2, 3, 4], index=1)
+
 with col_info_strada2:
     f_attrito = st.selectbox("Stato del fondo stradale (Aderenza Cinem.)", options=["Asfalto asciutto (f=0.75)", "Asfalto Bagnato (f=0.45)", "Viscido / Fango (f=0.30)"])
     coefficiente_f = 0.75 if "asciutto" in f_attrito else (0.45 if "Bagnato" in f_attrito else 0.30)
