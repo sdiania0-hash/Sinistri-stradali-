@@ -148,7 +148,7 @@ for i in range(num_veicoli):
         tipo_misure = f"Metodo Avanzato a 4 spigoli inseriti manualmente."
 
     elenco_veicoli.append({"let": let, "modello": modello, "targa": targa, "lat": lat_v, "lon": lon_v, "punti": punti_v, "descr_misure": tipo_misure, "misure_base": [vx1, vz1, vx2, vz2]})
-        st.divider()
+st.divider()
 st.subheader("💥 Rilievo Tracce Forensi e Punto d'Urto")
 col_pu1, col_pu2 = st.columns(2)
 with col_pu1:
