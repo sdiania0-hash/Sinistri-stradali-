@@ -1,6 +1,6 @@
 streamlit
 numpy
 matplotlib
-pillow
-reportlab
-streamlit-js-eval
+requests
+pyproj
+streamlit-geolocation
