@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import io
 import math
-from streamlit_js_eval import streamlit_js_eval
+import requests
 
 st.set_page_config(page_title="Terminale Rilievo Forense", layout="centered")
 st.title("🚓 Terminale Universale di Rilievo Planimetrico Forense")
@@ -12,12 +12,15 @@ st.title("🚓 Terminale Universale di Rilievo Planimetrico Forense")
 st.warning("⚠️ **VERSIONE BETA IN VIA DI SVILUPPO** — Prototipo industriale per il rilievo stradale. I calcoli geometrici, le stime cinematiche e le acquisizioni hardware devono essere verificati dall'operatore prima dell'inserimento negli atti ufficiali.")
 st.caption("© 2026 Tutti i diritti riservati. Proprietà intellettuale depositata. Integrazione classificazione lesioni e tipologie stradali multiple.")
 
+# Contenitore fisso superiore per la planimetria grafica
 contenitore_mappa = st.empty()
 
+# Inizializzazione dello stato della sessione per la memoria delle posizioni satellitari
 if "lat_x_real" not in st.session_state: st.session_state["lat_x_real"] = 40.019572
 if "lon_x_real" not in st.session_state: st.session_state["lon_x_real"] = 18.118944
 if "lat_z_real" not in st.session_state: st.session_state["lat_z_real"] = 40.019590
 if "lon_z_real" not in st.session_state: st.session_state["lon_z_real"] = 18.119230
+if "indirizzo_rilevato" not in st.session_state: st.session_state["indirizzo_rilevato"] = "SP55 Matino-Taviano (In attesa di fix GPS)"
 
 DIZIONARIO_SEGMENTI = {"🚗 Autovettura Utilitaria / Media": {"w": 1.65, "l": 3.85, "t": "auto"}, "🚙 SUV / Berlina Lunga / Furgone": {"w": 1.90, "l": 4.65, "t": "auto"}, "🏍️ Motociclo / Ciclomotore (Mozzo Ant./Post.)": {"w": 0.80, "l": 2.10, "t": "moto"}, "🚚 Mezzo Pesante / Autobus": {"w": 2.50, "l": 11.50, "t": "auto"}, "🚶 Pedone / Ostacolo Fisso (Punto)": {"w": 0.60, "l": 0.60, "t": "punto"}}
 
@@ -42,22 +45,61 @@ def calcola_rettangolo_veicolo(x_ant, z_ant, x_post, z_post, larghezza=1.80, lun
     p4 = p1 - lunghezza * np.array([ux, uz])
     return np.array([p1, p2, p3, p4])
 
+# FUNZIONE REVERSE GEOCODING: Interroga OpenStreetMap per avere la via reale senza API Key a pagamento
+def ricava_indirizzo_reale(lat, lon):
+    try:
+        url = f"https://openstreetmap.org{lat}&lon={lon}&zoom=18&addressdetails=1"
+        headers = {"User-Agent": "TerminaleVideorilievoForense/1.0 (contact@example.com)"}
+        risposta = requests.get(url, headers=headers, timeout=5).json()
+        return risposta.get("display_name", f"Coordinate: {lat:.6f}, {lon:.6f}")
+    except:
+        return f"Coordinate: {lat:.6f}, {lon:.6f} (Mappa Strumentale)"
+
 st.header("1. Protocollo di Acquisizione Dati sul Campo")
 stazione = st.text_input("Ufficio / Comando Procedente", value="STAZIONE CC MATINO")
 operanti = st.text_input("Personale Operante", value="Brig. Rima G., V.B. Rizzo V.")
-localita = st.text_input("Località / Via / Progressiva Km", value="SP55 Matino-Taviano")
-data_ora = st.text_input("Data e Ora del Rilievo", value="15/06/2026 | ORE: 06:50")
+st.subheader("📡 Centralina di Acquisizione GPS e Localizzazione")
+st.markdown("*Attiva il modulo sottostante sul telefono per agganciare i satelliti. I dati verranno scritti in tempo reale.*")
 
-st.subheader("🏥 Stato di Incolumità delle Persone (Gravità)")
-col_g1, col_g2, col_g3 = st.columns(3)
-with col_g1:
-    flag_feriti = st.checkbox("🩹 Presenza di Feriti")
-    flag_gravi = st.checkbox("🚨 Feriti Gravi (Prognosi Riservata)")
-with col_g2:
-    flag_decesso = st.checkbox("🚷 Sinistro con Esito Mortale (Decesso)")
-    flag_ospedale = st.checkbox("🚑 Trasporto in Ospedale via 118")
-with col_g3:
-    ospedale_nome = st.text_input("Ospedale di Destinazione", value="Vito Fazzi - Lecce")
+# SCRIPT JAVASCRIPT HARDWARE GPS: Interroga direttamente il browser senza librerie instabili
+st.components.v1.html("""
+<div style="background-color: #1e272e; color: white; padding: 12px; border-radius: 8px; font-family: sans-serif; text-align: center;">
+    <button onclick="getLocation()" style="background-color: #ff3f34; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer;">
+        🔄 CLICCA QUI PER AGGANCIARE I SATELLITI LIVE
+    </button>
+    <p id="geo_status" style="margin-top: 8px; font-size: 12px; color: #0be881;">In attesa di comando hardware...</p>
+</div>
+<script>
+function getLocation() {
+    var output = document.getElementById("geo_status");
+    if (!navigator.geolocation) {
+        output.innerHTML = "GPS non supportato dal browser.";
+        return;
+    }
+    output.innerHTML = "Sintonizzazione satelliti in corso...";
+    navigator.geolocation.getCurrentPosition(function(position) {
+        output.innerHTML = "📡 FIX ACCETTATO! Lat: " + position.coords.latitude.toFixed(6) + " | Lon: " + position.coords.longitude.toFixed(6) + " (Copia questi valori sotto)";
+    }, function() {
+        output.innerHTML = "Errore: Autorizza i permessi GPS sul telefono.";
+    });
+}
+</script>
+""", height=100)
+
+col_cx, col_cz = st.columns(2)
+with col_cx:
+    lat_x = st.number_input("Latitudine Caposaldo X", value=st.session_state["lat_x_real"], format="%.6f")
+    lon_x = st.number_input("Longitudine Caposaldo X", value=st.session_state["lon_x_real"], format="%.6f")
+with col_cz:
+    lat_z = st.number_input("Latitudine Mira Z", value=st.session_state["lat_z_real"], format="%.6f")
+    lon_z = st.number_input("Longitudine Mira Z", value=st.session_state["lon_z_real"], format="%.6f")
+
+if st.button("🗺️ ESEGUI GEOCODING STRADALE AUTOMATICO", use_container_width=True):
+    st.session_state["indirizzo_rilevato"] = ricava_indirizzo_reale(lat_x, lon_x)
+    st.success(f"Indirizzo agganciato d'ufficio: {st.session_state['indirizzo_rilevato']}")
+
+localita = st.text_input("Località / Via Accertata (Auto-compilata da GPS)", value=st.session_state["indirizzo_rilevato"])
+data_ora = st.text_input("Data e Ora del Rilievo", value="15/06/2026 | ORE: 06:50")
 
 col_info_strada1, col_info_strada2 = st.columns(2)
 with col_info_strada1:
@@ -69,39 +111,21 @@ with col_info_strada2:
     orientamento_nord = st.selectbox("Orientamento Linea di Base (Direzione Caposaldo Z)", options=["Nord ⬆️", "Nord-Est ↗️", "Est ➡️", "Sud-Est ↘️", "Sud ⬇️", "Sud-Ovest ↙️", "Ovest ⬅️", "Nord-Ovest ↖️"])
     stato_asfalto = st.selectbox("Stato del fondo stradale", options=["Asfalto Asciutto (f=0.75)", "Asfalto Bagnato (f=0.45)", "Viscido / Fango (f=0.30)"])
 
-note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Fondo stradale regolare, segnaletica orizzontale visibile.")
-st.divider()
-st.subheader("📡 Fissaggio Linea di Base (Capisaldi)")
-ottieni_gps = st.checkbox("🔄 Attiva Sensore GPS del Dispositivo")
-posizione_reale = None
-
-if ottieni_gps:
-    posizione_reale = streamlit_js_eval(data_string="navigator.geolocation.getCurrentPosition(success => { return [success.coords.latitude, success.coords.longitude]; }, error => { return null; })", key="gps_device_live")
-    if posizione_reale and len(posizione_reale) == 2: st.success("📡 Satelliti Agganciati! Posizione registrata correttamente.")
-    else: st.warning("Ricerca del fix GPS in corso... Assicurati di aver concesso i permessi.")
-
 st.markdown("##### 🗺️ Ispezione Stradale Google Maps")
-url_maps = f"https://google.com{st.session_state['lat_x_real']},{st.session_state['lon_x_real']}"
+url_maps = f"https://google.com{lat_x},{lon_x}"
 st.link_button("🌐 Apri coordinate su Google Maps (Verifica Corsie e Curve)", url_maps, use_container_width=True)
 
-col_cx, col_cz = st.columns(2)
-with col_cx:
-    if st.button("📍 Inserisci GPS Attuale -> Caposaldo X") and posizione_reale:
-        st.session_state["lat_x_real"] = posizione_reale
-        st.session_state["lon_x_real"] = posizione_reale
-    lat_x = st.number_input("Latitudine Caposaldo X", value=st.session_state["lat_x_real"], format="%.6f")
-    lon_x = st.number_input("Longitudine Caposaldo X", value=st.session_state["lon_x_real"], format="%.6f")
+st.subheader("🏥 Stato di Incolumità delle Persone (Gravità)")
+col_g1, col_g2 = st.columns(2)
+with col_g1:
+    flag_feriti = st.checkbox("🩹 Presenza di Feriti")
+    flag_gravi = st.checkbox("🚨 Feriti Gravi (Prognosi Riservata)")
+with col_g2:
+    flag_decesso = st.checkbox("🚷 Sinistro con Esito Mortale (Decesso)")
+    flag_ospedale = st.checkbox("🚑 Trasporto in Ospedale via 118")
+ospedale_nome = st.text_input("Ospedale di Destinazione", value="Vito Fazzi - Lecce")
 
-with col_cz:
-    if st.button("📍 Inserisci GPS Attuale -> Mira Z") and posizione_reale:
-        st.session_state["lat_z_real"] = posizione_reale
-        st.session_state["lon_z_real"] = posizione_reale
-    lat_z = st.number_input("Latitudine Mira Z", value=st.session_state["lat_z_real"], format="%.6f")
-    lon_z = st.number_input("Longitudine Mira Z", value=st.session_state["lon_z_real"], format="%.6f")
-
-dist_calcolata = calcola_distanza_gps(lat_x, lon_x, lat_z, lon_z)
-if dist_calcolata < 0.1: dist_calcolata = 25.05
-dist_XZ = st.number_input("Distanza Linea di Base X - Z (metri)", min_value=1.0, value=float(round(dist_calcolata, 2)))
+note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Fondo stradale regolare, segnaletica orizzontale visibile.")
 
 st.divider()
 st.subheader("🚗 Anagrafica e Rilievo Mezzi / Entità Coinvolte")
@@ -115,7 +139,6 @@ elenco_veicoli = []
 for k in range(num_veicoli):
     let = chr(65 + k)
     st.write(f"--- **ENTITÀ / VEICOLO {let}** ---")
-    
     categoria = st.selectbox(f"Tipologia / Categoria di Mezzo {let}", options=list(DIZIONARIO_SEGMENTI.keys()), index=(0 if k==0 else (1 if k==1 else 2)), key=f"cat_{k}")
     larg, lung, tipo_forma = DIZIONARIO_SEGMENTI[categoria]["w"], DIZIONARIO_SEGMENTI[categoria]["l"], DIZIONARIO_SEGMENTI[categoria]["t"]
     
@@ -125,11 +148,8 @@ for k in range(num_veicoli):
         targa = st.text_input(f"Targa / Sigla {let}", value=default_targhe[k % 3], key=f"tg_{k}")
         stato_mezzo = st.selectbox(f"Stato di Quiete Mezzo {let}", options=["Normale (Ruote a terra)", "Ribaltato su un fianco", "Sottosopra / Capovolto"], key=f"cond_mezzo_{k}")
     with col_v2:
-        if st.button(f"📍 Prendi GPS di Posizionamento Mezzo {let}", key=f"btn_gps_v_{k}") and posizione_reale:
-            st.session_state[f"lat_v_{k}"] = posizione_reale
-            st.session_state[f"lon_v_{k}"] = posizione_reale
-        lat_v = st.number_input(f"Lat {let}", value=st.session_state.get(f"lat_v_{k}", 40.019580 + (k * 0.00001)), format="%.6f", key=f"la_in_{k}")
-        lon_v = st.number_input(f"Lon {let}", value=st.session_state.get(f"lon_v_{k}", 18.119050 + (k * 0.00001)), format="%.6f", key=f"lo_in_{k}")
+        lat_v = st.number_input(f"Latitudine di Quiete Mezzo {let}", value=lat_x + (k * 0.00002), format="%.6f", key=f"la_in_{k}")
+        lon_v = st.number_input(f"Longitudine di Quiete Mezzo {let}", value=lon_x + (k * 0.00002), format="%.6f", key=f"lo_in_{k}")
 
     st.markdown("*📁 Caricamento Documenti (Lettura Forense Integrata)*")
     col_doc1, col_doc2 = st.columns(2)
@@ -159,7 +179,7 @@ for k in range(num_veicoli):
     
     punti_v = calcola_rettangolo_veicolo(vx1, vz1, vx2, vz2, larg, lung)
     elenco_veicoli.append({"let": let, "modello": modello, "targa": targa, "lat": lat_v, "lon": lon_v, "punti": punti_v, "misure_base": [vx1, vz1], "ocr": dati_ocr, "passeggeri": elenco_pass_v, "stato": stato_mezzo, "forma": tipo_forma, "categoria": categoria})
-st.divider()
+    st.divider()
 st.subheader("💥 Rilievo Tracce Forensi e Punto d'Urto")
 col_pu1, col_pu2 = st.columns(2)
 with col_pu1:
@@ -186,6 +206,9 @@ for idx_r in range(num_riscontri):
     with col_r3:
         dist_val = st.number_input(f"Distanza (m)", value=12.90 if idx_r==0 else 4.20, format="%.2f", key=f"d_val_{idx_r}")
     elenco_riscontri.append({"da": p_da, "a": p_a, "dist": dist_val})
+
+dist_XZ = calcola_distanza_gps(lat_x, lon_x, lat_z, lon_z)
+if dist_XZ < 0.1: dist_XZ = 25.05
 
 def genera_tavola_grafica():
     fig, ax_mappa = plt.subplots(figsize=(16, 7), dpi=150)
@@ -250,9 +273,9 @@ with contenitore_mappa:
 st.markdown("### 📋 Cartiglio Ufficiale e Legenda Metrica")
 col_cart1, col_cart2 = st.columns(2)
 with col_cart1:
-    st.info(f"**CARTIGLIO PROCEDENTE**\n\n• **Comando:** {stazione}\n\n• **Località:** {localita}\n\n• **Data/Ora:** {data_ora}\n\n• **Configurazione:** {tipo_carreggiata} ({andamento_strada})\n\n• **Personale Operante:** {operanti}")
+    st.info(f"**CARTIGLIO PROCEDENTE**\n\n• **Comando:** {stazione}\n\n• **Località Reale:** {localita}\n\n• **Data/Ora:** {data_ora}\n\n• **Configurazione:** {tipo_carreggiata} ({andamento_strada})\n\n• **Personale Operante:** {operanti}")
 with col_cart2:
-    testo_leg_box = f"**LEGENDA PARAMETRI REGISTRATI**\n\n• 🌟 **Punto d'Urto presunto (P.U.):** X={pu_x:.2f}m, Z={pu_z:.2f}m\n\n• 🟡 **Traccia Frenata:** inizio a X={frenata_x:.2f}m\n\n• 🧭 **Orientazione / Base:** {orientamento_nord} (Linea Base X-Z = {dist_XZ}m)\n\n• 📏 **Riscontri Diretti Incrociati:**\n"
+    testo_leg_box = f"**LEGENDA PARAMETRI REGISTRATI**\n\n• 🌟 **Punto d'Urto presunto (P.U.):** X={pu_x:.2f}m, Z={pu_z:.2f}m\n\n• 🟡 **Traccia Frenata:** inizio a X={frenata_x:.2f}m\n\n• 🧭 **Orientazione / Base:** {orientamento_nord} (Linea Base X-Z = {dist_XZ:.2f}m)\n\n• 📏 **Riscontri Diretti Incrociati:**\n"
     for r in elenco_riscontri:
         testo_leg_box += f"  - Distanza {r['da']} ➡️ {r['a']} = {r['dist']} m\n"
     st.success(testo_leg_box)
@@ -265,35 +288,20 @@ if flag_gravi: severita = "🚨 INCIDENTE STRADALE CON FERITI IN PROGNOSI RISERV
 if flag_decesso: severita = "🚷 INCIDENTE STRADALE CON ESITO MORTALE (DECESSO)"
 
 testo_relazione = f"""RELAZIONE SINTETICA DI RILIEVO FORENSE (VERBALE MOD. NK)
-Ufficio Procedente: {stazione}\nOperatori sul posto: {operanti}\nLocalità d'intervento: {localita} | Data e Ora: {data_ora}
+Ufficio Procedente: {stazione}\nOperatori sul posto: {operanti}\nLocalità d'intervento reale: {localita} | Data e Ora: {data_ora}
 
 CLASSIFICAZIONE EVENTO: {severita}
 {"↳ Trasporto sanitario d'urgenza gestito dal 118 verso l'Ospedale: " + ospedale_nome if flag_ospedale else ""}
 
-In data e ora indicate, il personale scrivente è intervenuto nel luogo descritto. La sede stradale si presentava configurata come {tipo_carreggiata.upper()}, con fondo in {stato_asfalto.upper()}, andamento {andamento_strada.upper()} ed orientamento d'allineamento cardinale verso {orientamento_nord.upper()}. La larghezza utile della carreggiata è misurata in {larg_carreggiata} metri, organized su {num_corsie} corsie per senso di marcia. Annotazioni ambientali: {note_luogo}.
+In data e ora indicate, il personale scrivente è intervenuto nel luogo descritto. La sede stradale si presentava configurata come {tipo_carreggiata.upper()}, con fondo in {stato_asfalto.upper()}, andamento {andamento_strada.upper()} ed orientamento d'allineamento cardinale verso {orientamento_nord.upper()}. La larghezza utile della carreggiata è misurata in {larg_carreggiata} metri, organizzata su {num_corsie} corsie per senso di marcia. Annotazioni ambientali: {note_luogo}.
 
 Rilievo topografico eseguito tramite linea di base cartesiana vincolata ai capisaldi stabili:
 - Caposaldo X: Lat: {lat_x:.6f}, Lon: {lon_x:.6f} (Origine degli assi 0.00)
 - Mira Z: Lat: {lat_z:.6f}, Lon: {lon_z:.6f}
-Distanza metrica sulla linea di base X-Z: {dist_XZ} metri.
+Distanza metrica sulla linea di base X-Z calcolata: {dist_XZ:.2f} metri.
 
 EVIDENZE E TRACCE FORENSI:
 Sul piano viabile è stato localizzato il Punto d'Urto presunto (P.U.) alle quote X = {pu_x:.2f} m e Z = {pu_z:.2f} m. Tale area d'impatto risulta preceduta da una traccia gommata di frenata/scarrocciamento continuo avente inizio alla quota X = {frenata_x:.2f} m e Z = {frenata_z:.2f} m, indicativa del bloccaggio degli pneumatici prima dell'evento.
 
-ANAGRAFICA MEZZI, DOCUMENTI E STATO DI QUIETE:\n"""
-
-for v in elenco_veicoli:
-    testo_relazione += f"- Mezzo {v['let']}: {v['modello']} (Targa: {v['targa']}). Categoria: {v['categoria']}. Stato di quiete: {v['stato']}. Posizione GPS Assoluta: {v['lat']:.6f}, {v['lon']:.6f}.\n"
-    testo_relazione += f"  ↳ Controllo Documentale: {v['ocr']}\n"
-    if v['passeggeri']: testo_relazione += f"  ↳ Passeggeri registrati a bordo:\n     • " + "\n     • ".join(v['passeggeri']) + "\n"
-
-testo_relazione += f"\nMISURE DI RISCONTRO DIRETTO INCROCIATO:\nA garanzia della precisione millimetrica dello schizzo grafico allegato agli atti, sono state isolate le seguenti distanze di controllo diretto sul campo:\n"
-for r in elenco_riscontri:
-    testo_relazione += f"- Distanza misurata direttamente tra il punto {r['da']} ed il punto {r['a']}: {r['dist']} metri.\n"
-
-testo_relazione += f"\nI rilievi tecnici descritti sono stati conclusi regolarmente per il successivo ripristino della viabilità ordinaria."
-
-st.text_area("Copia l'intero verbale NK strutturato per l'inserimento negli atti d'ufficio:", value=testo_relazione, height=400)
-
-if st.button("🏗️ RIGENERA INTERO ELABORATO E MAPPA", type="primary", use_container_width=True): st.success("Planimetria, cartiglio e relazione scritta aggiornati con successo!")
+ANAGRAF
     
