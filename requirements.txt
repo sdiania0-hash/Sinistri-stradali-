@@ -1,5 +1,6 @@
+streamlit
 numpy
 matplotlib
+pillow
 reportlab
-folium
-streamlit-folium
+streamlit-js-eval
