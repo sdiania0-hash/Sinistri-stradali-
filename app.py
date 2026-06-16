@@ -319,7 +319,8 @@ st.info(f"📏 Distanza calcolata sulla linea di base strumentale X - Z: **{dist
 # 2. SEZIONE ACQUISIZIONE DATI VEICOLI
 # =========================================================
 st.header("2. Veicoli")
-n = st.selectbox("Numero veicoli coinvolti nel sinistro",, index=1)
+n = st.selectbox("Numero veicoli coinvolti nel sinistro", [1, 2, 3, 4, 5], index=1)
+
 veicoli = []
 # ==============================================================================
 # BLOCCO 5 DI 4 (ESTESO): SEZIONE PEDONI, TAVOLA GRAFICA, CINEMATICA ED ESPORTAZIONE ATTI
