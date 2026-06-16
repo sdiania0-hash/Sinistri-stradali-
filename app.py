@@ -372,9 +372,15 @@ with col_cine2:
     pendenza_strada = st.number_input("Pendenza longitudinale della strada p (%) (+ per salita, - per discesa)", min_value=-20.0, max_value=20.0, value=0.0)
     velocita_impatto = st.number_input("Stima della velocità residua al momento dell'urto V_URTO (km/h)", min_value=0.0, max_value=200.0, value=30.0)
 
-# Mappatura coefficienti d'attrito f in base alla selezione dello stato asfalto nel Blocco 4
-aderenza_mappa = {"Asfalto asciutto (f=0.75)": 0.75, "Asfalto Bagnato (f=0.45)": 0.45, "Viscido / Fango (f=0.30)": 0.30}
-f_aderenza = aderenza_mappa.get(stato_asfalto, 0.75)
+# Recupero sicuro del coefficiente d'attrito per evitare il NameError
+aderenza_mappa = {
+    "Asfalto asciutto (f=0.75)": 0.75, 
+    "Asfalto Bagnato (f=0.45)": 0.45, 
+    "Viscido / Fango (f=0.30)": 0.30
+}
+stringa_stato = stato_asfalto if 'stato_asfalto' in locals() else "Asfalto asciutto (f=0.75)"
+f_aderenza = aderenza_mappa.get(stringa_stato, 0.75)
+
 
 v_stimata_kmh = 0.0
 if usa_frenata and lunghezza_traccia > 0:
