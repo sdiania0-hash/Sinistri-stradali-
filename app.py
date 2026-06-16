@@ -6,12 +6,15 @@ import io
 import math
 from streamlit_js_eval import streamlit_js_eval
 
-# 1. IMPOSTAZIONI INTERFACCIA WEB
+# 1. IMPOSTAZIONI INTERFACCIA WEB E NOTE LEGALI
 st.set_page_config(page_title="Terminale Rilievo Planimetrico Forense", layout="centered")
 st.title("🚓 Terminale di Rilievo Planimetrico Universale GPS")
-st.info("💡 Interfaccia per il rilievo dei sinistri. Permette l'acquisizione GPS dei veicoli, la scelta del metodo di misurazione e genera la relazione tecnica finale.")
 
-# Contenitore dinamico per mantenere la planimetria in evidenza in alto
+st.warning("⚠️ **VERSIONE BETA IN VIA DI SVILUPPO** — Questo software è un prototipo sperimentale per il rilievo stradale. I calcoli geometrici e le acquisizioni hardware devono essere verificati dall'operatore procedente prima dell'inserimento negli atti ufficiali.")
+st.caption("© 2026 Tutti i diritti riservati. Proprietà intellettuale e codice sorgente depositati. Vietata la riproduzione e la ridistribuzione non autorizzata.")
+
+st.info("💡 Interfaccia professionale per il rilievo dei sinistri. Permette la scelta del metodo di misura, l'acquisizione GPS e la generazione istantanea della relazione tecnica d'ufficio.")
+
 contenitore_mappa = st.empty()
 
 # Inizializzazione della memoria di stato per i capisaldi e veicoli GPS
@@ -20,7 +23,6 @@ if "lon_x_real" not in st.session_state: st.session_state["lon_x_real"] = 18.118
 if "lat_z_real" not in st.session_state: st.session_state["lat_z_real"] = 40.019590
 if "lon_z_real" not in st.session_state: st.session_state["lon_z_real"] = 18.119230
 
-# DATABASE VEHICLE SEGMENTS
 DIZIONARIO_SEGMENTI = {
     "🚗 Piccola / Utilitaria (Panda, Ypsilon, C3)": {"w": 1.65, "l": 3.85},
     "🚗 Compatta / Media (Golf, Giulietta, Focus)": {"w": 1.80, "l": 4.30},
@@ -29,7 +31,6 @@ DIZIONARIO_SEGMENTI = {
     "🚚 Furgone Commerciale Light (Ducato, Daily)": {"w": 2.05, "l": 5.40}
 }
 
-# FUNZIONE GEODETICA: Calcola la distanza reale in metri tra coordinate GPS
 def calcola_distanza_gps(lat1, lon1, lat2, lon2):
     R = 6371000.0
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
@@ -38,7 +39,6 @@ def calcola_distanza_gps(lat1, lon1, lat2, lon2):
     a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# FUNZIONE RAPIDA 2 RUOTE: Genera i 4 spigoli partendo da Ruota Ant. e Post. Sinistra
 def calcola_rettangolo_veicolo(x_ant, z_ant, x_post, z_post, larghezza=1.80, lunghezza=4.20):
     dx = x_ant - x_post
     dz = z_ant - z_post
@@ -59,7 +59,15 @@ stazione = st.text_input("Ufficio / Comando Procedente", value="STAZIONE CC MATI
 operanti = st.text_input("Personale Operante", value="Brig. Rima G., V.B. Rizzo V.")
 localita = st.text_input("Località / Via / Progressiva Km", value="SP55 Matino-Taviano")
 data_ora = st.text_input("Data e Ora del Rilievo", value="15/06/2026 | ORE: 06:50")
-larg_carreggiata = st.number_input("Larghezza Sede Stradale cd (metri)", min_value=2.0, max_value=20.0, value=6.60)
+
+col_info_strada1, col_info_strada2 = st.columns(2)
+with col_info_strada1:
+    larg_carreggiata = st.number_input("Larghezza Sede Stradale cd (metri)", min_value=2.0, max_value=20.0, value=6.60)
+    num_corsie = st.selectbox("Numero totale di corsie", options=[1, 2, 3, 4], index=1)
+with col_info_strada2:
+    andamento_strada = st.selectbox("Andamento della sede stradale", options=["Rettilineo", "Curva a Destra ↪️", "Curva a Sinistra ↩️"])
+    orientamento_nord = st.selectbox("Orientamento Linea di Base (Direzione Caposaldo Z)", options=["Nord ⬆️", "Nord-Est ↗️", "Est ➡️", "Sud-Est ↘️", "Sud ⬇️", "Sud-Ovest ↙️", "Ovest ⬅️", "Nord-Ovest ↖️"])
+
 note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Strada Provinciale SP55, carreggiata a doppio senso di circolazione. Fondo stradale: asfalto asciutto. Visibilità buona.")
 st.divider()
 st.subheader("📡 Fissaggio Linea di Base (Capisaldi)")
@@ -75,6 +83,10 @@ if ottieni_gps:
         st.success(f"📡 Satelliti Agganciati! Posizione corrente: {posizione_reale[0]:.6f}, {posizione_reale[1]:.6f}")
     else:
         st.warning("Ricerca del fix GPS in corso... Assicurati di aver concesso i permessi.")
+
+st.markdown("##### 🗺️ Ispezione Stradale Google Maps")
+url_maps = f"https://google.com{st.session_state['lat_x_real']},{st.session_state['lon_x_real']}"
+st.link_button("🌐 Apri coordinate su Google Maps (Verifica Corsie e Curve)", url_maps, use_container_width=True)
 
 col_cx, col_cz = st.columns(2)
 with col_cx:
@@ -119,7 +131,6 @@ for i in range(num_veicoli):
         if st.button(f"📍 Prendi GPS di Posizionamento per Veicolo {let}", key=f"btn_gps_v_{i}") and posizione_reale:
             st.session_state[f"lat_v_{i}"] = posizione_reale[0]
             st.session_state[f"lon_v_{i}"] = posizione_reale[1]
-            st.toast(f"GPS Veicolo {let} salvato!")
         lat_v = st.number_input(f"Lat {let}", value=st.session_state.get(f"lat_v_{i}", 40.019580 + (i * 0.00001)), format="%.6f", key=f"la_in_{i}")
         lon_v = st.number_input(f"Lon {let}", value=st.session_state.get(f"lon_v_{i}", 18.119050 + (i * 0.00001)), format="%.6f", key=f"lo_in_{i}")
 
@@ -159,23 +170,41 @@ for i in range(num_veicoli):
         tipo_misure = f"Metodo Avanzato a 4 spigoli inseriti manualmente."
 
     elenco_veicoli.append({"let": let, "modello": modello, "targa": targa, "lat": lat_v, "lon": lon_v, "punti": punti_v, "descr_misure": tipo_misure, "misure_base": [vx1, vz1, vx2, vz2]})
+
+st.divider()
+st.subheader("💥 Rilievo Tracce Forensi e Punto d'Urto")
+col_pu1, col_pu2 = st.columns(2)
+with col_pu1:
+    pu_x = st.number_input("Punto d'Urto Presunto (P.U.) - Asse X (m)", value=17.00)
+    frenata_x = st.number_input("Inizio Traccia Frenata - Asse X (m)", value=12.00)
+with col_pu2:
+    pu_z = st.number_input("Punto d'Urto Presunto (P.U.) - Asse Z (m)", value=4.50)
+    frenata_z = st.number_input("Inizio Traccia Frenata - Asse Z (m)", value=4.50)
         st.divider()
 st.subheader("📏 Misure Dirette di Riscontro")
 dist_A1B1 = st.number_input("Distanza diretta d'intersezione A1 - B1 (m)", value=12.90, format="%.2f")
 dist_A2B3 = st.number_input("Distanza diretta d'intersezione A2 - B3 (m)", value=11.40, format="%.2f")
 
-# 3. ENGINE DI DISEGNO DELLA TAVOLA STRUTTURATA
 def genera_tavola_grafica():
     fig = plt.figure(figsize=(16, 10), dpi=150)
     grid = plt.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.25)
     ax_mappa = fig.add_subplot(grid[0])
     ax_mappa.set_facecolor('#465a38')
 
-    # Asfalto e linee stradali
+    # Asfalto e linee stradali dinamiche
     ax_mappa.fill_between([-15, dist_XZ + 20], -larg_carreggiata, 0, facecolor='#2f3542', alpha=0.95, zorder=1)
     ax_mappa.axhline(y=0, color='white', linestyle='-', linewidth=3, zorder=2)
     ax_mappa.axhline(y=-larg_carreggiata, color='white', linestyle='-', linewidth=3, zorder=2)
-    ax_mappa.axhline(y=-larg_carreggiata/2, color='white', linestyle='--', linewidth=1.5, zorder=2)
+    
+    if num_corsie > 1:
+        spazio_corsia = larg_carreggiata / num_corsie
+        for c in range(1, num_corsie):
+            quota_linea = - (spazio_corsia * c)
+            ax_mappa.axhline(y=quota_linea, color='white', linestyle='--', linewidth=1.5, alpha=0.8, zorder=2)
+
+    # Nota visiva andamento stradale
+    if "Curva" in andamento_strada:
+        ax_mappa.text((dist_XZ/2), 2.2, f"⚠️ ASSE STRADALE RETTIFICATO - GEOMETRIA IN {andamento_strada.upper()}", color='darkred', weight='bold', ha='center', fontsize=9)
 
     # Capisaldi X - Z
     ax_mappa.scatter([0, dist_XZ], [0, 0], color='#e67e22', s=250, marker='X', edgecolor='white', zorder=10)
@@ -183,10 +212,21 @@ def genera_tavola_grafica():
     ax_mappa.text(dist_XZ + 0.5, 0.5, "Mira Z\n(Palo)", color='black', fontsize=9, fontweight='bold', ha='left')
     ax_mappa.plot([0, dist_XZ], [0, 0], color='#e67e22', linestyle='-', linewidth=2, zorder=3)
 
+    # Disegno Punto d'Urto Presunto (P.U.)
+    ax_mappa.scatter([pu_x], [-pu_z], color='red', s=300, marker='*', edgecolor='white', linewidth=1.5, label="P.U.", zorder=8)
+    ax_mappa.text(pu_x + 0.5, -pu_z, "P.U.", color='red', weight='bold', fontsize=10, zorder=8)
+
+    # Disegno Traccia di Frenata / Scarrocciamento
+    ax_mappa.plot([frenata_x, pu_x], [-frenata_z, -pu_z], color='#f1c40f', linestyle='--', linewidth=3, zorder=4)
+    ax_mappa.text(frenata_x, -frenata_z + 0.3, "Traccia Frenata", color='#f1c40f', fontsize=8, weight='bold')
+
+    # Indicatore del Nord Orientativo sulla mappa
+    ax_mappa.text(-3, 2.0, f"🧭 Orientamento: {orientamento_nord}", color='black', weight='bold', fontsize=9, bbox=dict(facecolor='white', alpha=0.8, pad=2))
+
     colori_v = ['#1b9cfc', '#718093', '#2ecc71']
     for idx, v in enumerate(elenco_veicoli):
         pts = v["punti"].copy()
-        pts[:, 1] = -pts[:, 1]  # Proiezione verso il basso
+        pts[:, 1] = -pts[:, 1]
         col = colori_v[idx % len(colori_v)]
         
         poly = patches.Polygon(pts, closed=True, facecolor=col, edgecolor='black', linewidth=2, zorder=5)
@@ -196,8 +236,8 @@ def genera_tavola_grafica():
         ax_mappa.text(cx, cz, f"Veicolo {v['let']}\n({v['modello']})", color='white', fontsize=9, weight='bold', ha='center', va='center', zorder=6)
         
         mb = v["misure_base"]
-        ax_mappa.plot([mb[0], mb[0]], [0, -mb[1]], color=col, linestyle=':', alpha=0.7)
-        ax_mappa.plot([mb[2], mb[2]], [0, -mb[3]], color=col, linestyle=':', alpha=0.7)
+        ax_mappa.plot([mb, mb], [0, -mb], color=col, linestyle=':', alpha=0.7)
+        ax_mappa.plot([mb, mb], [0, -mb], color=col, linestyle=':', alpha=0.7)
 
     ax_mappa.grid(True, color='#ffffff', linestyle='--', alpha=0.15)
     ax_mappa.set_xlim(-5, dist_XZ + 10)
@@ -209,13 +249,13 @@ def genera_tavola_grafica():
     ax_info = fig.add_subplot(grid[1])
     ax_info.axis('off')
     
-    cartiglio = f"CARTIGLIO DI RILIEVO PROCEDENTE\n• Comando: {stazione}\n• Località: {localita}\n• Data/Ora: {data_ora}\n• Personale: {operanti}"
-    ax_info.text(0.01, 0.95, cartiglio, fontsize=9, bbox=dict(facecolor='white', edgecolor='#cccccc', boxstyle='round,pad=0.8'), va='top')
+    cartiglio = f"CARTIGLIO DI RILIEVO PROCEDENTE\n• Comando: {stazione}\n• Località: {localita}\n• Data/Ora: {data_ora}\n• Tratto: {andamento_strada} | Orientazione: {orientamento_nord}\n• Operatori: {operanti}"
+    ax_info.text(0.01, 0.95, cartiglio, fontsize=8.5, bbox=dict(facecolor='white', edgecolor='#cccccc', boxstyle='round,pad=0.8'), va='top')
     
     legenda_legge = "LEGENDA E PARAMETRI REGISTRATI:\n"
     for v in elenco_veicoli:
-        legenda_legge += f"• Veicolo {v['let']}: {v['modello']} ({v['targa']}) | GPS: {v['lat']:.5f}, {v['lon']:.5f}\n  ↳ {v['descr_misure']}\n"
-    legenda_legge += f"• Riscontri Diretti Incrociati: A1-B1 = {dist_A1B1}m | A2-B3 = {dist_A2B3}m"
+        legenda_legge += f"• Veicolo {v['let']}: {v['modello']} ({v['targa']}) | GPS: {v['lat']:.5f}, {v['lon']:.5f}\n"
+    legenda_legge += f"• Evidenze: Punto d'Urto (P.U.) a X={pu_x}m, Z={pu_z}m | Traccia Frenata inizio X={frenata_x}m\n• Riscontri: A1-B1 = {dist_A1B1}m | A2-B3 = {dist_A2B3}m"
     ax_info.text(0.48, 0.95, legenda_legge, fontsize=8.5, bbox=dict(facecolor='#f8f9fa', edgecolor='#e67e22', boxstyle='round,pad=0.8'), va='top')
 
     buf = io.BytesIO()
@@ -224,10 +264,9 @@ def genera_tavola_grafica():
     plt.close(fig)
     return buf
 
-# Esecuzione e rendering all'interno della web app
 with contenitore_mappa:
     immagine_mappa = genera_tavola_grafica()
-    st.image(immagine_mappa, caption="Tavola Grafica Forense Distribuita con Legenda e Cartiglio Integrato")
+    st.image(immagine_mappa, caption="Tavola Grafica Forense Distribuita con Legenda, Corsie, P.U. e Cartiglio Integrato")
 
 # 4. GENERATORE DI RELAZIONE SCRITTA BREVE DEL SINISTRO
 st.divider()
@@ -239,12 +278,14 @@ Operatori sul posto: {operanti}
 Località e data: {localita} | Data e Ora: {data_ora}
 
 In data e ora sopra indicate, il personale scrivente è intervenuto nel luogo descritto a causa di un sinistro stradale.
-I luoghi si presentavano come segue: {note_luogo}. La carreggiata misura una larghezza complessiva di {larg_carreggiata} metri.
+I luoghi si presentavano come segue: {note_luogo}. La sede stradale presenta una configurazione in tratto {andamento_strada.upper()} con orientamento cardinale d'allineamento verso {orientamento_nord.upper()}. La carreggiata misura una larghezza complessiva di {larg_carreggiata} metri ed è suddivisa in {num_corsie} corsie di marcia.
 
 Per la determinazione geometrico-topografica dello stato delle cose, si è proceduto a istituire una linea di base d'allineamento legata a due capisaldi geografici stabili:
-- Caposaldo X (Origine degli axes cartesiani 0.00): Lat: {lat_x:.6f}, Lon: {lon_x:.6f}
+- Caposaldo X (Origine degli assi cartesiani 0.00): Lat: {lat_x:.6f}, Lon: {lon_x:.6f}
 - Mira Z (Fine della linea di orientamento): Lat: {lat_z:.6f}, Lon: {lon_z:.6f}
 Distanza metrica rilevata sulla linea di base X-Z: {dist_XZ} metri.
+
+Nel corso dei rilievi è stato individuato il Punto d'Urto presunto (P.U.) individuato alle quote cartesiane X = {pu_x:.2f} m e Z = {pu_z:.2f} m, preceduto da una traccia di frenata/scarrocciamento gommata sull'asfalto avente inizio alla quota X = {frenata_x:.2f} m e Z = {frenata_z:.2f} m.
 
 Sulla scorta di tale allineamento, sono state cristallizzate le posizioni statiche di quiete dei seguenti veicoli coinvolti:\n"""
 
