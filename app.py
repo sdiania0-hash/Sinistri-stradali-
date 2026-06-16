@@ -151,24 +151,34 @@ for k in range(num_veicoli):
     st.markdown("📐 *Misure Cartesiane (Allineamento Caposaldo X)*")
     col_q1, col_q2 = st.columns(2)
     with col_q1:
-        vx1 = st.number_input(f"Punto Anteriore Sx / Ruota Ant. X (m) [{let}1]", value=default_inputs[k % 2]["xa"] if k < len(default_inputs) else 10.0, key=f"{let}_x1_r")
-        vz1 = st.number_input(f"Punto Anteriore Sx / Ruota Ant. Z (m) [{let}1]", value=default_inputs[k % 2]["za"] if k < len(default_inputs) else 2.0, key=f"{let}_z1_r")
+        vx1 = st.number_input(f"Ruota Ant. Sx / Mozzo Ant. X (m) [{let}1]", value=default_inputs[k % 2]["xa"] if k < len(default_inputs) else 10.0, key=f"{let}_x1_r")
+        vz1 = st.number_input(f"Ruota Ant. Sx / Mozzo Ant. Z (m) [{let}1]", value=default_inputs[k % 2]["za"] if k < len(default_inputs) else 2.0, key=f"{let}_z1_r")
     with col_q2:
-        vx2 = st.number_input(f"Punto Posteriore Sx / Ruota Post. X (m) [{let}2]", value=default_inputs[k % 2]["xp"] if k < len(default_inputs) else 12.0, key=f"{let}_x2_r")
-        vz2 = st.number_input(f"Punto Posteriore Sx / Ruota Post. Z (m) [{let}2]", value=default_inputs[k % 2]["zp"] if k < len(default_inputs) else 2.0, key=f"{let}_z2_r")
+        vx2 = st.number_input(f"Ruota Post. Sx / Mozzo Post. X (m) [{let}2]", value=default_inputs[k % 2]["xp"] if k < len(default_inputs) else 12.0, key=f"{let}_x2_r")
+        vz2 = st.number_input(f"Ruota Post. Sx / Mozzo Post. Z (m) [{let}2]", value=default_inputs[k % 2]["zp"] if k < len(default_inputs) else 2.0, key=f"{let}_z2_r")
     
     punti_v = calcola_rettangolo_veicolo(vx1, vz1, vx2, vz2, larg, lung)
     elenco_veicoli.append({"let": let, "modello": modello, "targa": targa, "lat": lat_v, "lon": lon_v, "punti": punti_v, "misure_base": [vx1, vz1], "ocr": dati_ocr, "passeggeri": elenco_pass_v, "stato": stato_mezzo, "forma": tipo_forma, "categoria": categoria})
-    st.divider()
+st.divider()
+st.subheader("💥 Rilievo Tracce Forensi e Punto d'Urto")
+col_pu1, col_pu2 = st.columns(2)
+with col_pu1:
+    pu_x = st.number_input("Punto d'Urto Presunto (P.U.) - Asse X (m)", value=17.00)
+    frenata_x = st.number_input("Inizio Traccia Frenata - Asse X (m)", value=12.00)
+with col_pu2:
+    pu_z = st.number_input("Punto d'Urto Presunto (P.U.) - Asse Z (m)", value=4.50)
+    frenata_z = st.number_input("Inizio Traccia Frenata - Asse Z (m)", value=4.50)
+
+st.divider()
 st.subheader("📏 Misure Dirette di Riscontro Incrociato")
 st.markdown("*Inserisci le distanze di controllo misurate direttamente sul campo tra i punti di riferimento.*")
 
-num_riscontri = st.selectbox("Quante distanze di riscontro vuoi registrare?", options=[1, 2, 3, 4, 5], index=1, key="num_risc")
+num_riscontri = st.selectbox("Quanti riscontri metrici vuoi registrare?", options=[1, 2, 3, 4, 5], index=1, key="num_risc")
 elenco_riscontri = []
 
 for idx_r in range(num_riscontri):
     st.write(f"🔹 **Riscontro Metrico N° {idx_r + 1}**")
-    col_r1, col_r2, col_r3 = st.columns([2, 2, 1])
+    col_r1, col_r2, col_r3 = st.columns(3)
     with col_r1:
         p_da = st.text_input(f"Dal Punto / Spigolo", value=f"A1" if idx_r==0 else f"B2", key=f"p_da_{idx_r}")
     with col_r2:
@@ -178,9 +188,7 @@ for idx_r in range(num_riscontri):
     elenco_riscontri.append({"da": p_da, "a": p_a, "dist": dist_val})
 
 def genera_tavola_grafica():
-    fig = plt.figure(figsize=(16, 10), dpi=150)
-    grid = plt.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.25)
-    ax_mappa = fig.add_subplot(grid)
+    fig, ax_mappa = plt.subplots(figsize=(16, 7), dpi=150)
     ax_mappa.set_facecolor('#465a38')
     
     if "Doppia Carreggiata" in tipo_carreggiata:
@@ -209,7 +217,7 @@ def genera_tavola_grafica():
     ax_mappa.scatter([pu_x], [-pu_z], color='red', s=300, marker='*', edgecolor='white', linewidth=1.5, zorder=8)
     ax_mappa.text(pu_x + 0.3, -pu_z + 0.3, "P.U.", color='red', weight='bold', fontsize=11)
     ax_mappa.plot([frenata_x, pu_x], [-frenata_z, -pu_z], color='#f1c40f', linestyle='--', linewidth=3, zorder=4)
-    ax_mappa.text(-3, 2.0, f"🧭 Nord: {orientamento_nord}", color='black', weight='bold', fontsize=9, bbox=dict(facecolor='white', alpha=0.8, pad=2))
+    ax_mappa.text(-3, 1.8, f"🧭 Nord: {orientamento_nord}", color='black', weight='bold', fontsize=9, bbox=dict(facecolor='white', alpha=0.8, pad=2))
     
     colori_v = ['#1b9cfc', '#718093', '#2ecc71', '#9b59b6', '#1abc9c']
     for idx_m, v in enumerate(elenco_veicoli):
@@ -219,24 +227,15 @@ def genera_tavola_grafica():
         if v["forma"] == "punto": ax_mappa.scatter([v["misure_base"][0]], [-v["misure_base"][1]], color='red', s=150, zorder=6)
         else: ax_mappa.add_patch(patches.Polygon(pts, closed=True, facecolor=col, edgecolor='black', linewidth=2, zorder=5))
         ax_mappa.text(np.mean(pts[:, 0]), np.mean(pts[:, 1]), f"{v['let']}\n({v['stato']})", color='white', fontsize=8, weight='bold', ha='center', va='center', zorder=6)
-        mb = v["misure_base"]
-        ax_mappa.plot([mb[0], mb[0]], [0, -mb[1]], color=col, linestyle=':', alpha=0.7)
-        ax_mappa.text(mb[0], -mb[1] - 0.3, f"{v['let']}1", color='white', fontsize=8, weight='bold', bbox=dict(facecolor='black', alpha=0.7, pad=1))
+        mb_x, mb_z = v["misure_base"][0], v["misure_base"][1]
+        ax_mappa.plot([mb_x, mb_x], [0, -mb_z], color=col, linestyle=':', alpha=0.7)
+        ax_mappa.text(mb_x, -mb_z - 0.3, f"{v['let']}1", color='white', fontsize=8, weight='bold', bbox=dict(facecolor='black', alpha=0.7, pad=1))
 
     ax_mappa.grid(True, color='#ffffff', linestyle='--', alpha=0.15)
     ax_mappa.set_xlim(-12, dist_XZ + 15)
     ax_mappa.set_ylim(-larg_carreggiata*2 - 5, 4)
     ax_mappa.set_aspect('equal')
-    
-    ax_info = fig.add_subplot(grid)
-    ax_info.axis('off')
-    cartiglio = f"CARTIGLIO RILIEVO UFFICIALE\n• Comando: {stazione}\n• Località: {localita}\n• Data/Ora: {data_ora}\n• Configurazione: {tipo_carreggiata} ({andamento_strada})\n• Operanti: {operanti}"
-    ax_info.text(0.01, 0.95, cartiglio, fontsize=8.5, bbox=dict(facecolor='white', edgecolor='#cccccc', boxstyle='round,pad=0.8'), va='top')
-    
-    legenda_legge = f"LEGENDA TECNICA DEI RILIEVI:\n• Stella Rossa (P.U.): Punto d'Urto presunto a X={pu_x}m, Z={pu_z}m\n• Linea Tratteggiata Gialla: Traccia Frenata gommata inizio X={frenata_x}m\n• Allineamento Nord: {orientamento_nord} | Linea Base X-Z = {dist_XZ}m\n• RISCONTRI METRICI DIRETTI:\n"
-    for r in elenco_riscontri:
-        legenda_legge += f"  ↳ Distanza {r['da']} - {r['a']} = {r['dist']} metri\n"
-    ax_info.text(0.48, 0.95, legenda_legge, fontsize=8.2, bbox=dict(facecolor='#f8f9fa', edgecolor='#e67e22', boxstyle='round,pad=0.8'), va='top')
+    ax_mappa.set_title("SCHIZZO PLANIMETRICO DI RILIEVO FORENSE", fontsize=12, weight='bold')
     
     buf = io.BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight')
@@ -246,7 +245,17 @@ def genera_tavola_grafica():
 
 with contenitore_mappa:
     immagine_mappa = genera_tavola_grafica()
-    st.image(immagine_mappa, caption="Tavola Grafica Forense Unificata con Legenda e Proiezione Stradale Adattiva")
+    st.image(immagine_mappa, caption="Tavola Tecnica Forense con Proiezione Stradale Dinamica")
+
+st.markdown("### 📋 Cartiglio Ufficiale e Legenda Metrica")
+col_cart1, col_cart2 = st.columns(2)
+with col_cart1:
+    st.info(f"**CARTIGLIO PROCEDENTE**\n\n• **Comando:** {stazione}\n\n• **Località:** {localita}\n\n• **Data/Ora:** {data_ora}\n\n• **Configurazione:** {tipo_carreggiata} ({andamento_strada})\n\n• **Personale Operante:** {operanti}")
+with col_cart2:
+    testo_leg_box = f"**LEGENDA PARAMETRI REGISTRATI**\n\n• 🌟 **Punto d'Urto presunto (P.U.):** X={pu_x:.2f}m, Z={pu_z:.2f}m\n\n• 🟡 **Traccia Frenata:** inizio a X={frenata_x:.2f}m\n\n• 🧭 **Orientazione / Base:** {orientamento_nord} (Linea Base X-Z = {dist_XZ}m)\n\n• 📏 **Riscontri Diretti Incrociati:**\n"
+    for r in elenco_riscontri:
+        testo_leg_box += f"  - Distanza {r['da']} ➡️ {r['a']} = {r['dist']} m\n"
+    st.success(testo_leg_box)
 
 st.divider()
 st.header("📝 2. Relazione Sintetica dello Stato dei Luoghi (Verbale NK)")
@@ -261,7 +270,7 @@ Ufficio Procedente: {stazione}\nOperatori sul posto: {operanti}\nLocalità d'int
 CLASSIFICAZIONE EVENTO: {severita}
 {"↳ Trasporto sanitario d'urgenza gestito dal 118 verso l'Ospedale: " + ospedale_nome if flag_ospedale else ""}
 
-In data e ora indicate, il personale scrivente è intervenuto nel luogo descritto. La sede stradale si presentava configurata come {tipo_carreggiata.upper()}, con fondo in {stato_asfalto.upper()}, andamento {andamento_strada.upper()} ed orientamento d'allineamento cardinale verso {orientamento_nord.upper()}. La larghezza utile della carreggiata è misurata in {larg_carreggiata} metri, organizzata su {num_corsie} corsie per senso di marcia. Annotazioni ambientali: {note_luogo}.
+In data e ora indicate, il personale scrivente è intervenuto nel luogo descritto. La sede stradale si presentava configurata come {tipo_carreggiata.upper()}, con fondo in {stato_asfalto.upper()}, andamento {andamento_strada.upper()} ed orientamento d'allineamento cardinale verso {orientamento_nord.upper()}. La larghezza utile della carreggiata è misurata in {larg_carreggiata} metri, organized su {num_corsie} corsie per senso di marcia. Annotazioni ambientali: {note_luogo}.
 
 Rilievo topografico eseguito tramite linea di base cartesiana vincolata ai capisaldi stabili:
 - Caposaldo X: Lat: {lat_x:.6f}, Lon: {lon_x:.6f} (Origine degli assi 0.00)
