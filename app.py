@@ -176,7 +176,8 @@ dist_A2B3 = st.number_input("Distanza diretta d'intersezione A2 - B3 (m)", value
 
 def genera_tavola_grafica():
     fig = plt.figure(figsize=(16, 10), dpi=150)
-    grid = plt.GridSpec(2, 1, height_ratios=, hspace=0.25)
+    grid = plt.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.25)
+
     ax_mappa = fig.add_subplot(grid)
     ax_mappa.set_facecolor('#465a38')
     
