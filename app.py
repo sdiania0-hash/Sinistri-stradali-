@@ -205,7 +205,8 @@ def genera_tavola_grafica():
     ax_mappa.arrow(-10, -larg_carreggiata/2, 4, 0, width=0.2, head_width=0.6, head_length=0.8, color='white', alpha=0.5, zorder=2)
     ax_mappa.text(-8, -larg_carreggiata/2 + 0.5, "SENSO DI MARCIA", color='white', alpha=0.5, fontsize=7, weight='bold')
 
-    ax_mappa.scatter([0, dist_XZ],, color='#e67e22', s=250, marker='X', edgecolor='white', zorder=10)
+    ax_mappa.scatter([0, dist_XZ], [0, 0], color='#e67e22', s=250, marker='X', edgecolor='white', zorder=10)
+
     ax_mappa.plot([0, dist_XZ],, color='#e67e22', linestyle='-', linewidth=2, zorder=3)
     ax_mappa.scatter([pu_x], [-pu_z], color='red', s=300, marker='*', edgecolor='white', linewidth=1.5, zorder=8)
     ax_mappa.plot([frenata_x, pu_x], [-frenata_z, -pu_z], color='#f1c40f', linestyle='--', linewidth=3, zorder=4)
