@@ -184,6 +184,7 @@ def calcola_rettangolo_veicolo_utm(x_ant, z_ant, x_post, z_post, larghezza, lung
     ax.set_xlabel("Asse Metrico Longitudinale Z (metri Avanzamento)")
     ax.set_ylabel("Asse Metrico Ortogonale X (metri Scostamento)")
     return fig
+
     def build_report(localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata,
                  larg_carreggiata, num_corsie, stato_asfalto, note_luogo, orientamento_nord, 
                  lat_x, lon_x, lat_z, lon_z, dist_XZ, elenco_veicoli, elenco_pedoni):
