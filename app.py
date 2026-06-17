@@ -154,7 +154,7 @@ DIZIONARIO_SEGMENTI = {
     "🚚 Mezzo Pesante / Autobus": {"w": 2.50, "l": 11.50, "tipo": "camion"}
 }
 # ==============================================================================
-# LOGIN MULTI-UTENTE
+# LOGIN MULTI-UTENTE (con password in chiaro)
 # ==============================================================================
 if not st.session_state["autenticato"]:
     st.title("🚓 Terminale Universale di Rilievo Planimetrico Stradale")
@@ -168,17 +168,14 @@ if not st.session_state["autenticato"]:
         password = st.text_input("Password", type="password", value="", autocomplete="off")
         
         if st.button("🔓 Accedi", type="primary", use_container_width=True):
-            # Pulisci input come prima
             utente_pulito = nome_utente.strip().lower() if nome_utente else ""
             password_pulita = password.strip() if password else ""
             
-            # Verifica nel config.yaml
+            # Verifica nel config.yaml (password in chiaro)
             try:
                 if utente_pulito in config['credentials']['usernames']:
-                    # Usa streamlit-authenticator per verificare
-                    import bcrypt
                     stored_password = config['credentials']['usernames'][utente_pulito]['password']
-                    if bcrypt.checkpw(password_pulita.encode('utf-8'), stored_password.encode('utf-8')):
+                    if password_pulita == stored_password:
                         st.session_state["autenticato"] = True
                         st.session_state["operatore"] = utente_pulito
                         st.session_state["nome_completo"] = config['credentials']['usernames'][utente_pulito]['name']
@@ -189,17 +186,16 @@ if not st.session_state["autenticato"]:
                         st.error("❌ Password errata. Riprova.")
                 else:
                     st.error("❌ Utente non trovato. Verifica le credenziali.")
-            except:
+            except Exception as e:
+                st.error(f"❌ Errore di configurazione: {e}")
                 # Fallback alle credenziali di default
-                if utente_pulito == UTENTE_CORRETTO and password_pulita == PASSWORD_CORRETTA:
+                if utente_pulito == "comando" and password_pulita == "matino2026":
                     st.session_state["autenticato"] = True
                     st.session_state["operatore"] = "comando"
                     st.session_state["nome_completo"] = "Comando"
                     st.session_state["matricola"] = "00000"
                     st.success("✅ Accesso effettuato con credenziali di default.")
                     st.rerun()
-                else:
-                    st.error("❌ Credenziali errate. Riprova.")
     st.stop()
 
 # ==============================================================================
