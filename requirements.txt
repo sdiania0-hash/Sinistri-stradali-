@@ -5,4 +5,4 @@ requests>=2.31.0
 pyproj>=3.5.0
 pytesseract>=0.3.10
 Pillow>=10.0.0
-fpdf>=1.7.2
+reportlab>=4.0.0
