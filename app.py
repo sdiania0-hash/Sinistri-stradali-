@@ -154,7 +154,7 @@ DIZIONARIO_SEGMENTI = {
     "🚚 Mezzo Pesante / Autobus": {"w": 2.50, "l": 11.50, "tipo": "camion"}
 }
 # ==============================================================================
-# LOGIN MULTI-UTENTE (con password in chiaro)
+# LOGIN SEMPLICE
 # ==============================================================================
 if not st.session_state["autenticato"]:
     st.title("🚓 Terminale Universale di Rilievo Planimetrico Stradale")
@@ -162,40 +162,24 @@ if not st.session_state["autenticato"]:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.subheader("🔒 Accesso Riservato - Carabinieri")
-        st.markdown("*Inserisci le tue credenziali personali.*")
+        st.markdown("*Inserisci le tue credenziali.*")
         
-        nome_utente = st.text_input("Username", value="", autocomplete="off")
-        password = st.text_input("Password", type="password", value="", autocomplete="off")
+        u_raw = st.text_input("Username", value="", autocomplete="off")
+        p_raw = st.text_input("Password", type="password", value="", autocomplete="off")
         
         if st.button("🔓 Accedi", type="primary", use_container_width=True):
-            utente_pulito = nome_utente.strip().lower() if nome_utente else ""
-            password_pulita = password.strip() if password else ""
+            utente_pulito = u_raw.strip().lower() if u_raw else ""
+            password_pulita = p_raw.strip() if p_raw else ""
             
-            # Verifica nel config.yaml (password in chiaro)
-            try:
-                if utente_pulito in config['credentials']['usernames']:
-                    stored_password = config['credentials']['usernames'][utente_pulito]['password']
-                    if password_pulita == stored_password:
-                        st.session_state["autenticato"] = True
-                        st.session_state["operatore"] = utente_pulito
-                        st.session_state["nome_completo"] = config['credentials']['usernames'][utente_pulito]['name']
-                        st.session_state["matricola"] = config['credentials']['usernames'][utente_pulito].get('matricola', '')
-                        st.success(f"✅ Benvenuto, {st.session_state['nome_completo']}!")
-                        st.rerun()
-                    else:
-                        st.error("❌ Password errata. Riprova.")
-                else:
-                    st.error("❌ Utente non trovato. Verifica le credenziali.")
-            except Exception as e:
-                st.error(f"❌ Errore di configurazione: {e}")
-                # Fallback alle credenziali di default
-                if utente_pulito == "comando" and password_pulita == "matino2026":
-                    st.session_state["autenticato"] = True
-                    st.session_state["operatore"] = "comando"
-                    st.session_state["nome_completo"] = "Comando"
-                    st.session_state["matricola"] = "00000"
-                    st.success("✅ Accesso effettuato con credenziali di default.")
-                    st.rerun()
+            if utente_pulito == "comando" and password_pulita == "matino2026":
+                st.session_state["autenticato"] = True
+                st.session_state["operatore"] = "comando"
+                st.session_state["nome_completo"] = "Comando"
+                st.session_state["matricola"] = "00000"
+                st.success("✅ Accesso effettuato!")
+                st.rerun()
+            else:
+                st.error("❌ Credenziali errate. Riprova.")
     st.stop()
 
 # ==============================================================================
