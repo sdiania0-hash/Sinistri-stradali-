@@ -1,12 +1,10 @@
 import streamlit as st
-import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import io
 import math
 import requests
-from streamlit_geolocation import streamlit_geolocation
 from pyproj import Transformer
 import pytesseract
 from PIL import Image
@@ -16,11 +14,7 @@ from datetime import datetime
 from fpdf import FPDF
 
 st.set_page_config(page_title="Terminale Rilievo Planimetrico", layout="wide")
-
-# Carica la configurazione degli utenti
-
-
-
+st.title("🚓 Terminale Universale di Rilievo Planimetrico Stradale")
 
 UTENTE_CORRETTO = "comando"
 PASSWORD_CORRETTA = "matino2026"
@@ -125,8 +119,7 @@ DIZIONARIO_SEGMENTI = {
     "🚙 SUV / Furgone Commerciale": {"w": 1.90, "l": 4.65, "tipo": "suv"},
     "🏍️ Motociclo (Ciclomotore)": {"w": 0.80, "l": 2.10, "tipo": "moto"},
     "🚚 Mezzo Pesante / Autobus": {"w": 2.50, "l": 11.50, "tipo": "camion"}
-}
-# ==============================================================================
+}# ==============================================================================
 # LOGIN SEMPLICE
 # ==============================================================================
 if not st.session_state["autenticato"]:
@@ -155,10 +148,6 @@ if not st.session_state["autenticato"]:
                 st.error("❌ Credenziali errate. Riprova.")
     st.stop()
 
-# ==============================================================================
-# HEADER CON OPERATORE
-# ==============================================================================
-st.title("🚓 Terminale Universale di Rilievo Planimetrico Stradale")
 st.sidebar.success(f"👮 Operatore: {st.session_state['nome_completo']}")
 st.sidebar.info(f"🆔 Matricola: {st.session_state['matricola']}")
 st.sidebar.markdown("---")
@@ -169,16 +158,9 @@ st.warning("⚠️ VERSIONE BETA IN CORSO DI AGGIORNAMENTO - Sistema professiona
 # SEZIONE 1: PROTOCOLLO ACQUISIZIONE DATI
 # ==============================================================================
 st.header("1. Protocollo di Acquisizione Dati sul Campo")
-location = streamlit_geolocation()
 
-if location and location.get("latitude") is not None and location.get("longitude") is not None:
-    if st.session_state["strada_bloccata"] in ["", "SP55 Matino-Taviano, Matino"]:
-        st.session_state["strada_bloccata"] = reverse_geo(location["latitude"], location["longitude"])
-
-localita = st.text_input("Località / Via Rilevata (Accertamento Satellitare)", value=st.session_state["strada_bloccata"])
+localita = st.text_input("Località / Via Rilevata", value=st.session_state["strada_bloccata"])
 data_ora = st.text_input("Data e Ora del Rilievo", value=f"{datetime.now().strftime('%d/%m/%Y')} | ORE: {datetime.now().strftime('%H:%M')}")
-
-# Usa il nome dell'operatore loggato
 operatori_input = st.text_input("Operatori di Polizia Stradale", value=st.session_state["nome_completo"])
 
 col_strada1, col_strada2 = st.columns(2)
@@ -190,7 +172,7 @@ with col_strada1:
 with col_strada2:
     stato_asfalto = st.selectbox("Stato del fondo stradale", options=["Asfalto asciutto (f=0.75)", "Asfalto Bagnato (f=0.45)", "Viscido / Fango (f=0.30)"])
     orientamento_nord = st.selectbox("Orientamento Linea di Base (Direzione Caposaldo Z)", options=["Nord ⬆️", "Est ➡️", "Sud ⬇️", "Ovest ⬅️"])
-    note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Condizioni di luce: diurna. Visibilità: buona. Presenza di intersezione con strada vicinale.")
+    note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Condizioni di luce: diurna. Visibilità: buona.")
 
 st.subheader("📐 Definizione dei Capisaldi di Riferimento Strumentale")
 col_cx, col_cz = st.columns(2)
@@ -203,7 +185,6 @@ with col_cz:
 
 dist_XZ = distanza(lat_x, lon_x, lat_z, lon_z)
 st.info(f"📏 Distanza calcolata sulla linea di base strumentale X - Z: **{dist_XZ:.2f} metri**")
-
 # ==============================================================================
 # SEZIONE 2: VEICOLI
 # ==============================================================================
@@ -220,7 +201,7 @@ for i in range(n):
         cat = st.selectbox("Categoria e Modello Strutturale", list(DIZIONARIO_SEGMENTI.keys()), key=f"cat_{i}", index=i if i < 2 else 0)
         mod = st.text_input("Marca e Modello Esteso", value="Citroën C3" if i==0 else "Alfa Romeo 147", key=f"mod_{i}")
         targa = st.text_input("Targa del Veicolo", value="AA123BB" if i==0 else "CC456DD", key=f"targa_{i}").upper()
-        stato_v = st.text_input("Stato Post-Urto / Danni Strutturali", value="Danni ingenti sulla parte frontale dell'automezzo", key=f"stato_{i}")
+        stato_v = st.text_input("Stato Post-Urto / Danni Strutturali", value="Danni ingenti sulla parte frontale", key=f"stato_{i}")
         assetto_v = st.selectbox("Giacitura / Assetto di Quiete Statica", options=["Regolare", "Ribaltato sul fianco dx", "Ribaltato sul fianco sx", "Sottosopra (Capovolto)"], key=f"ass_{i}")
     with col_v2:
         latv = st.number_input(f"Lat Quiete GPS - Veicolo {let}", key=f"latv_{i}", value=lat_x, format="%.6f")
@@ -269,7 +250,7 @@ for i in range(n):
 # SEZIONE 3: PEDONI
 # ==============================================================================
 st.header("3. Pedoni / Strutture / Terzi Coinvolti")
-pnum = st.selectbox("Numero pedoni o ostacoli fissi da censire sul teatro del sinistro", [0, 1, 2, 3, 4, 5], index=0)
+pnum = st.selectbox("Numero pedoni o ostacoli fissi da censire", [0, 1, 2, 3, 4, 5], index=0)
 pedoni = []
 
 for i in range(pnum):
@@ -278,24 +259,23 @@ for i in range(pnum):
     with col_p1:
         nome_p = st.text_input("Identificativo / Nome Soggetto", value=f"Soggetto P{i+1}", key=f"pn_{i}")
         ferito_p = st.checkbox("Soggetto Infortunato / Deceduto", key=f"fped_{i}")
-    with col_p2: x_p = st.number_input("Distanza Ortogonale X (m) [Scostamento da Asse]", value=1.50, format="%.2f", key=f"px_{i}")
-    with col_p3: z_p = st.number_input("Avanzamento Base Z (m) [Distanza da Caposaldo]", value=12.00, format="%.2f", key=f"pz_{i}")
+    with col_p2: x_p = st.number_input("Distanza Ortogonale X (m)", value=1.50, format="%.2f", key=f"px_{i}")
+    with col_p3: z_p = st.number_input("Avanzamento Base Z (m)", value=12.00, format="%.2f", key=f"pz_{i}")
     with col_p4:
         prog_p = st.number_input("Prognosi Sanitaria Iniziale (gg)", min_value=0, value=0, key=f"pped_{i}")
-        osp_p = st.text_input("Struttura Sanitaria d'Accoglimento", value="Vito Fazzi" if ferito_p else "Nessuno", key=f"osped_{i}")
+        osp_p = st.text_input("Struttura Sanitaria", value="Vito Fazzi" if ferito_p else "Nessuno", key=f"osped_{i}")
     pedoni.append({"nome": nome_p, "x": x_p, "z": z_p, "ferito": ferito_p, "prognosi": prog_p, "ospedale": osp_p})
     # ==============================================================================
 # SEZIONE 4: FOTO
 # ==============================================================================
 st.header("📸 Fascicolo Fotografico Digitale dei Rilievi")
-if "foto_sinistro" not in st.session_state: st.session_state["foto_sinistro"] = []
 
 col_cam1, col_cam2 = st.columns(2)
 with col_cam1:
     sorgente_input = st.radio("Sorgente Input Media", options=["Fotocamera Dispositivo 📷", "Galleria File 📁"])
     if len(st.session_state["foto_sinistro"]) < 30:
         if sorgente_input == "Fotocamera Dispositivo 📷":
-    file_scatto = st.camera_input("Inquadra reperto d'urto", key="cam_hw_in")
+            file_scatto = st.camera_input("Inquadra reperto d'urto", key="cam_hw_in")
         else:
             file_scatto = st.file_uploader("Seleziona file immagine", type=["png", "jpg", "jpeg"], key="gal_hw_in")
         
@@ -312,8 +292,11 @@ with col_cam2:
     st.markdown(f"**Fotogrammi Validati: {len(st.session_state['foto_sinistro'])} / 30**")
     if st.session_state["foto_sinistro"]:
         for f in st.session_state["foto_sinistro"]:
-            with st.expander(f"📷 FOTOGRAMMA N. {f['id']} - {f['didascalia']}"): st.image(f["img"], use_container_width=True)
-        if st.button("🗑️ Svuota Fascicolo Fotografico"): st.session_state["foto_sinistro"] = []; st.rerun()
+            with st.expander(f"📷 FOTOGRAMMA N. {f['id']} - {f['didascalia']}"):
+                st.image(f["img"], use_container_width=True)
+        if st.button("🗑️ Svuota Fascicolo Fotografico"):
+            st.session_state["foto_sinistro"] = []
+            st.rerun()
 
 # ==============================================================================
 # SEZIONE 5: ANALISI CINEMATICA
@@ -344,14 +327,11 @@ if usa_frenata and lunghezza_traccia > 0:
 # SEZIONE 6: DISEGNO (con TOGGLE)
 # ==============================================================================
 st.header("4. Elaborazione Grafica e Generazione Planimetria")
-st.markdown("*Attivare l'interruttore sottostante per visualizzare o rigenerare lo schizzo planimetrico aggiornato sul campo:*")
+st.markdown("*Attivare l'interruttore sottostante per visualizzare o rigenerare lo schizzo planimetrico:*")
 
 attiva_schizzo = st.toggle("🔄 RIGENERA / AGGIORNA SCHIZZO PLANIMETRICO", value=st.session_state["render_schizzo"])
 st.session_state["render_schizzo"] = attiva_schizzo
 
-# ==============================================================================
-# FUNZIONE TAVOLA (DISEGNO) - DEVE ESSERE PRIMA DELL'USO
-# ==============================================================================
 def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, larg_c, num_c, stato_a, dist_xz, ord_nord, usa_frenata, lung_t):
     fig, ax = plt.subplots(figsize=(16, 10), facecolor="#f8f9fa")
     ax.set_xlim(-15, 45)
@@ -441,7 +421,6 @@ def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, la
         ax.text(32, y_pos_box + 2.0, f"{v['let']}A2 = {m[2]:.2f} m  |  {v['let']}Z2 = {m[3]:.2f} m", fontsize=7.5)
         ax.text(32, y_pos_box + 0.8, f"Assetto Quiete: {v['assetto_scelto']}", fontsize=7, style="italic")
     
-    # CALCOLO DISTANZE TRA VEICOLI
     distanze_txt = ""
     for i in range(len(veicoli)):
         for j in range(i+1, len(veicoli)):
@@ -496,7 +475,7 @@ if attiva_schizzo:
         st.warning("⚠️ Inserisci almeno un veicolo per generare lo schizzo.")
 else:
     st.info("ℹ️ Schizzo planimetrico in pausa. Attivare il selettore sopra per rigenerare la tavola grafica con le nuove misure.")
-# ==============================================================================
+    # ==============================================================================
 # SEZIONE 7: REPORT E VERBALE
 # ==============================================================================
 st.header("5. Relazione Tecnica Descrittiva Ufficiale di Reparto")
@@ -629,12 +608,10 @@ report_finale = build_report(
 
 st.text_area("📋 Verbale di P.G. (Modificabile)", report_finale, height=500)
 
-# Download PDF
 col_download1, col_download2, col_download3 = st.columns(3)
 with col_download1:
     st.download_button("📄 Scarica Verbale TXT", data=report_finale, file_name=f"VERBALE_{localita.replace(' ', '_')}.txt", mime="text/plain", use_container_width=True)
 with col_download2:
-    # PDF con FPDF
     try:
         pdf = FPDF()
         pdf.add_page()
@@ -651,7 +628,6 @@ with col_download2:
     except:
         st.warning("⚠️ Libreria FPDF non disponibile. Installa fpdf per il PDF.")
 with col_download3:
-    # Backup JSON
     backup_data = {
         "localita": localita,
         "data_ora": data_ora,
@@ -665,4 +641,4 @@ with col_download3:
     json_string = json.dumps(backup_data, indent=2, default=str)
     st.download_button("💾 Backup JSON", data=json_string, file_name=f"BACKUP_{localita.replace(' ', '_')}.json", mime="application/json", use_container_width=True)
 
-st.success("✅ Protocollo di rilievo completato. Tutti i dati sono stati salvati.")    
+st.success("✅ Protocollo di rilievo completato. Tutti i dati sono stati salvati.")
