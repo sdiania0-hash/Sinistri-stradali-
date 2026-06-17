@@ -1,8 +1,9 @@
 streamlit
 numpy
 matplotlib
+requests
 pyproj
 pytesseract
 Pillow
-requests
+fpdf
 streamlit-geolocation
