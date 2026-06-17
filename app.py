@@ -14,7 +14,6 @@ import re
 import json
 from datetime import datetime
 from fpdf import FPDF
-import yaml
 
 st.set_page_config(page_title="Terminale Rilievo Planimetrico", layout="wide")
 
