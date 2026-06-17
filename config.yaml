@@ -1,22 +1,12 @@
 credentials:
   usernames:
-    brig_rima:
-      name: Brig. Rima G.
-      password: $2b$12$5CkKjKqK5CkKjKqK5CkKju  # SOSTITUISCI CON QUELLA GENERATA
+    comando:
+      name: Comando
+      password: $2b$12$default
       role: operatore
-      matricola: 12345
-    vb_rizzo:
-      name: V.B. Rizzo V.
-      password: $2b$12$5CkKjKqK5CkKjKqK5CkKjv  # SOSTITUISCI CON QUELLA GENERATA
-      role: operatore
-      matricola: 67890
-    ten_rossi:
-      name: operatore
-      password: operatore # SOSTITUISCI CON QUELLA GENERATA
-      role: responsabile
-      matricola: 11111
+      matricola: 00000
 
 cookie:
   expiry_days: 30
   name: auth_cookie
-  key: chiave_super_segreta_12345  # METTI UNA FRASE A CASO
+  key: chiave_super_segreta_12345
