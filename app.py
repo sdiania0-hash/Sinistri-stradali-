@@ -295,7 +295,7 @@ with col_cam1:
     sorgente_input = st.radio("Sorgente Input Media", options=["Fotocamera Dispositivo 📷", "Galleria File 📁"])
     if len(st.session_state["foto_sinistro"]) < 30:
         if sorgente_input == "Fotocamera Dispositivo 📷":
-            file_scatto = st.camera_input("Inquadra reperto d'urto", key="cam_hw_in", facing_mode="environment")
+    file_scatto = st.camera_input("Inquadra reperto d'urto", key="cam_hw_in")
         else:
             file_scatto = st.file_uploader("Seleziona file immagine", type=["png", "jpg", "jpeg"], key="gal_hw_in")
         
