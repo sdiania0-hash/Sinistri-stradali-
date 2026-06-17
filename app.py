@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -14,7 +15,6 @@ import json
 from datetime import datetime
 from fpdf import FPDF
 import yaml
-from streamlit_authenticator import Authenticate
 
 st.set_page_config(page_title="Terminale Rilievo Planimetrico", layout="wide")
 
