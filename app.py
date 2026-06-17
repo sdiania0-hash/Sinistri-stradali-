@@ -11,7 +11,11 @@ from PIL import Image
 import re
 import json
 from datetime import datetime
-from fpdf import FPDF
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 st.set_page_config(page_title="Terminale Rilievo Planimetrico", layout="wide")
 st.title("🚓 Terminale Universale di Rilievo Planimetrico Stradale")
@@ -33,7 +37,8 @@ defaults = {
     "backup_json": {},
     "operatore": "",
     "nome_completo": "",
-    "matricola": ""
+    "matricola": "",
+    "reparto": "Carabinieri - Nucleo Radiomobile"
 }
 
 for k, v in defaults.items():
@@ -120,12 +125,12 @@ DIZIONARIO_SEGMENTI = {
     "🏍️ Motociclo (Ciclomotore)": {"w": 0.80, "l": 2.10, "tipo": "moto"},
     "🚚 Mezzo Pesante / Autobus": {"w": 2.50, "l": 11.50, "tipo": "camion"}
 }# ==============================================================================
-# LOGIN SEMPLICE (senza titolo duplicato)
+# LOGIN SEMPLICE
 # ==============================================================================
 if not st.session_state["autenticato"]:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.subheader("🔒 Accesso Riservato - Carabinieri")
+        st.subheader("🔒 Accesso Riservato - Polizia Stradale")
         st.markdown("*Inserisci le tue credenziali.*")
         
         u_raw = st.text_input("Username", value="", autocomplete="off")
@@ -157,6 +162,10 @@ st.warning("⚠️ VERSIONE BETA IN CORSO DI AGGIORNAMENTO - Sistema professiona
 # ==============================================================================
 st.header("1. Protocollo di Acquisizione Dati sul Campo")
 
+# Reparto modificabile dall'utente
+reparto = st.text_input("Reparto / Comando di Appartenenza", value=st.session_state["reparto"])
+st.session_state["reparto"] = reparto
+
 localita = st.text_input("Località / Via Rilevata", value=st.session_state["strada_bloccata"])
 data_ora = st.text_input("Data e Ora del Rilievo", value=f"{datetime.now().strftime('%d/%m/%Y')} | ORE: {datetime.now().strftime('%H:%M')}")
 operatori_input = st.text_input("Operatori di Polizia Stradale", value=st.session_state["nome_completo"])
@@ -169,7 +178,7 @@ with col_strada1:
     num_corsie = st.selectbox("Numero corsie totali della carreggiata", options=[1, 2, 3, 4], index=1)
 with col_strada2:
     stato_asfalto = st.selectbox("Stato del fondo stradale", options=["Asfalto asciutto (f=0.75)", "Asfalto Bagnato (f=0.45)", "Viscido / Fango (f=0.30)"])
-    orientamento_nord = st.selectbox("Orientamento Linea di Base (Direzione Caposaldo Z)", options=["Nord ⬆️", "Est ➡️", "Sud ⬇️", "Ovest ⬅️"])
+    orientamento_nord = st.selectbox("Orientamento Linea di Base", options=["Nord ⬆️", "Est ➡️", "Sud ⬇️", "Ovest ⬅️"])
     note_luogo = st.text_area("Stato dei luoghi e rilievi ambientali", value="Condizioni di luce: diurna. Visibilità: buona.")
 
 st.subheader("📐 Definizione dei Capisaldi di Riferimento Strumentale")
@@ -231,11 +240,12 @@ for i in range(n):
     num_pass = st.number_input(f"Numero di passeggeri - Veicolo {let}", min_value=0, max_value=4, value=0, key=f"npass_{i}")
     passeggeri_lista = []
     for p_idx in range(int(num_pass)):
-        col_ps1, col_ps2, col_ps3 = st.columns(3)
+        col_ps1, col_ps2, col_ps3, col_ps4 = st.columns(4)
         with col_ps1: descr_p = st.text_input(f"Generalità Pass. {p_idx+1} V_{let}", value=f"Passeggero {p_idx+1}", key=f"dps_{i}_{p_idx}")
-        with col_ps2: ferito_p = st.checkbox(f"Ferito Pass. {p_idx+1} V_{let}", key=f"fps_{i}_{p_idx}")
-        with col_ps3: prog_p = st.number_input(f"Prognosi Pass. {p_idx+1} V_{let}", min_value=0, value=0, key=f"pps_{i}_{p_idx}")
-        passeggeri_lista.append({"descr": descr_p, "ferito": ferito_p, "prognosi": prog_p})
+        with col_ps2: ferito_p = st.checkbox(f"Ferito", key=f"fps_{i}_{p_idx}")
+        with col_ps3: prog_p = st.number_input(f"Prognosi gg", min_value=0, value=0, key=f"pps_{i}_{p_idx}")
+        with col_ps4: osp_p = st.text_input(f"Ospedale", value="Vito Fazzi" if ferito_p else "Nessuno", key=f"ops_{i}_{p_idx}")
+        passeggeri_lista.append({"descr": descr_p, "ferito": ferito_p, "prognosi": prog_p, "ospedale": osp_p})
 
     veicoli.append({
         "let": let, "modello": mod, "targa": targa, "categoria": cat, "lat": latv, "lon": lonv, "stato": stato_v,
@@ -260,7 +270,7 @@ for i in range(pnum):
     with col_p2: x_p = st.number_input("Distanza Ortogonale X (m)", value=1.50, format="%.2f", key=f"px_{i}")
     with col_p3: z_p = st.number_input("Avanzamento Base Z (m)", value=12.00, format="%.2f", key=f"pz_{i}")
     with col_p4:
-        prog_p = st.number_input("Prognosi Sanitaria Iniziale (gg)", min_value=0, value=0, key=f"pped_{i}")
+        prog_p = st.number_input("Prognosi Sanitaria (gg)", min_value=0, value=0, key=f"pped_{i}")
         osp_p = st.text_input("Struttura Sanitaria", value="Vito Fazzi" if ferito_p else "Nessuno", key=f"osped_{i}")
     pedoni.append({"nome": nome_p, "x": x_p, "z": z_p, "ferito": ferito_p, "prognosi": prog_p, "ospedale": osp_p})
     # ==============================================================================
@@ -330,7 +340,7 @@ st.markdown("*Attivare l'interruttore sottostante per visualizzare o rigenerare 
 attiva_schizzo = st.toggle("🔄 RIGENERA / AGGIORNA SCHIZZO PLANIMETRICO", value=st.session_state["render_schizzo"])
 st.session_state["render_schizzo"] = attiva_schizzo
 
-def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, larg_c, num_c, stato_a, dist_xz, ord_nord, usa_frenata, lung_t):
+def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, larg_c, num_c, stato_a, dist_xz, ord_nord, usa_frenata, lung_t, reparto):
     fig, ax = plt.subplots(figsize=(16, 10), facecolor="#f8f9fa")
     ax.set_xlim(-15, 45)
     ax.set_ylim(-12, 22)
@@ -450,7 +460,7 @@ def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, la
     ax.text(10.5, -8.4, f"DATA: {data_ora}", fontsize=8)
     ax.text(10.5, -9.4, f"LOCALITÀ: {localita[:22]}", fontsize=8)
     ax.text(10.5, -10.4, f"OPERANTI: {operatori[:25]}", fontsize=8)
-    ax.text(10.5, -11.4, "Elaborazione: Digitale | Tavola 1 di 1", fontsize=8)
+    ax.text(10.5, -11.4, f"{reparto[:25]} | Tavola 1 di 1", fontsize=8)
     
     quadro_note = patches.Rectangle((29, -11.5), 15, 4.8, fill=True, facecolor="white", edgecolor="black", linewidth=1.2, zorder=4)
     ax.add_patch(quadro_note)
@@ -464,7 +474,7 @@ def tavola(veicoli, pedoni, localita, data_ora, operatori, andamento, tipo_c, la
 
 if attiva_schizzo:
     if veicoli:
-        fig = tavola(veicoli, pedoni, localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata, larg_carreggiata, num_corsie, stringa_stato, dist_XZ, orientamento_nord, usa_frenata, lunghezza_traccia)
+        fig = tavola(veicoli, pedoni, localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata, larg_carreggiata, num_corsie, stringa_stato, dist_XZ, orientamento_nord, usa_frenata, lunghezza_traccia, reparto)
         st.pyplot(fig)
         buf = io.BytesIO()
         fig.savefig(buf, format="png", dpi=300, bbox_inches="tight")
@@ -481,11 +491,11 @@ st.header("5. Relazione Tecnica Descrittiva Ufficiale di Reparto")
 def build_report(localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata,
                  larg_carreggiata, num_corsie, stringa_stato, note_l_agg,
                  orientamento_nord, lat_x, lon_x, lat_z, lon_z, dist_XZ,
-                 veicoli, pedoni, v_stimata_kmh, foto_count):
+                 veicoli, pedoni, v_stimata_kmh, foto_count, reparto):
     
     report = f"""
 ================================================================================
-                    REPARTO OPERATIVO - CARABINIERI
+                    {reparto.upper()}
 ================================================================================
 
 VERBALE DI RILIEVO PLANIMETRICO STRADALE
@@ -545,7 +555,7 @@ Distanza X-Z: {dist_XZ:.2f} m
         if v['passeggeri']:
             report += "│ PASSEGGERI:                                                                │\n"
             for idx, p in enumerate(v['passeggeri']):
-                report += f"│   {idx+1}. {p['descr']} - Ferito: {'Sì' if p['ferito'] else 'No'} - Prognosi: {p['prognosi']} gg │\n"
+                report += f"│   {idx+1}. {p['descr']} - Ferito: {'Sì' if p['ferito'] else 'No'} - Prognosi: {p['prognosi']} gg - Ospedale: {p['ospedale']} │\n"
         report += "└─────────────────────────────────────────────────────────────────────────────┘\n"
     
     if pedoni:
@@ -601,32 +611,29 @@ report_finale = build_report(
     localita, data_ora, operatori_input, andamento_strada, tipo_carreggiata,
     larg_carreggiata, num_corsie, stringa_stato, note_l_agg,
     orientamento_nord, lat_x, lon_x, lat_z, lon_z, dist_XZ,
-    veicoli, pedoni, v_stimata_kmh, len(st.session_state["foto_sinistro"])
+    veicoli, pedoni, v_stimata_kmh, len(st.session_state["foto_sinistro"]),
+    reparto
 )
 
-st.text_area("📋 Verbale di P.G. (Modificabile)", report_finale, height=500)
+st.text_area("📋 Verbale (Modificabile)", report_finale, height=500)
 
-col_download1, col_download2, col_download3 = st.columns(3)
+# ==============================================================================
+# ESPORTAZIONE
+# ==============================================================================
+col_download1, col_download2 = st.columns(2)
 with col_download1:
-    st.download_button("📄 Scarica Verbale TXT", data=report_finale, file_name=f"VERBALE_{localita.replace(' ', '_')}.txt", mime="text/plain", use_container_width=True)
+    st.download_button(
+        "📄 Scarica Verbale TXT",
+        data=report_finale,
+        file_name=f"VERBALE_{localita.replace(' ', '_')}.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
+    st.info("💡 Il verbale può essere stampato dal browser (Ctrl+P) o copiato in un editor di testo.")
+
 with col_download2:
-    try:
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, "RELAZIONE TECNICA DI RILIEVO PLANIMETRICO STRADALE", 0, 1, "C")
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "CARABINIERI - REPARTO OPERATIVO", 0, 1, "C")
-        pdf.line(10, 30, 200, 30)
-        pdf.set_font("Arial", "", 11)
-        pdf.ln(10)
-        for line in report_finale.split("\n"):
-            pdf.cell(0, 6, line[:180], 0, 1)
-        st.download_button("📕 Scarica Verbale PDF", data=pdf.output(dest='S').encode('latin1'), file_name=f"VERBALE_{localita.replace(' ', '_')}.pdf", mime="application/pdf", use_container_width=True)
-    except:
-        st.warning("⚠️ Libreria FPDF non disponibile. Installa fpdf per il PDF.")
-with col_download3:
     backup_data = {
+        "reparto": reparto,
         "localita": localita,
         "data_ora": data_ora,
         "operatori": operatori_input,
@@ -637,6 +644,12 @@ with col_download3:
         "velocita_stimata": v_stimata_kmh
     }
     json_string = json.dumps(backup_data, indent=2, default=str)
-    st.download_button("💾 Backup JSON", data=json_string, file_name=f"BACKUP_{localita.replace(' ', '_')}.json", mime="application/json", use_container_width=True)
+    st.download_button(
+        "💾 Backup JSON",
+        data=json_string,
+        file_name=f"BACKUP_{localita.replace(' ', '_')}.json",
+        mime="application/json",
+        use_container_width=True
+    )
 
 st.success("✅ Protocollo di rilievo completato. Tutti i dati sono stati salvati.")
