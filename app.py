@@ -18,35 +18,9 @@ from fpdf import FPDF
 st.set_page_config(page_title="Terminale Rilievo Planimetrico", layout="wide")
 
 # Carica la configurazione degli utenti
-def carica_config():
-    try:
-        with open('config.yaml', 'r', encoding='utf-8') as file:
-            return yaml.safe_load(file)
-    except:
-        # Se non c'è il file, usa le credenziali di default
-        return {
-            'credentials': {
-                'usernames': {
-                    'comando': {
-                        'name': 'Comando',
-                        'password': '$2b$12$default'  # Non funzionerà, ma evita crash
-                    }
-                }
-            },
-            'cookie': {
-                'expiry_days': 30,
-                'name': 'auth_cookie',
-                'key': 'default_key'
-            }
-        }
 
-config = carica_config()
-authenticator = Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
-)
+
+
 
 UTENTE_CORRETTO = "comando"
 PASSWORD_CORRETTA = "matino2026"
