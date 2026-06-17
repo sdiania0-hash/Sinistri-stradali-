@@ -2,9 +2,19 @@ credentials:
   usernames:
     comando:
       name: Comando
-      password: $2b$12$default
+      password: matino2026
       role: operatore
       matricola: 00000
+    brig_rima:
+      name: Brig. Rima G.
+      password: matino2026
+      role: operatore
+      matricola: 12345
+    vb_rizzo:
+      name: V.B. Rizzo V.
+      password: matino2026
+      role: operatore
+      matricola: 67890
 
 cookie:
   expiry_days: 30
