@@ -120,11 +120,9 @@ DIZIONARIO_SEGMENTI = {
     "🏍️ Motociclo (Ciclomotore)": {"w": 0.80, "l": 2.10, "tipo": "moto"},
     "🚚 Mezzo Pesante / Autobus": {"w": 2.50, "l": 11.50, "tipo": "camion"}
 }# ==============================================================================
-# LOGIN SEMPLICE
+# LOGIN SEMPLICE (senza titolo duplicato)
 # ==============================================================================
 if not st.session_state["autenticato"]:
-    st.title("🚓 Terminale Universale di Rilievo Planimetrico Stradale")
-    
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.subheader("🔒 Accesso Riservato - Carabinieri")
